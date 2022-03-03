@@ -1,0 +1,8 @@
+*__pycache__/
+*.pickle
+*.png
+
+venv/
+
+GPs/plots/
+GPs/models/
