@@ -12,6 +12,7 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
         self.n_trials = n_trials
 
     def forward(self, function_samples, **kwargs):
+        # conditional distribution p(y|f(x))
         output_probs = base_distributions.Normal(0, 1).cdf(function_samples)
         return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
 
@@ -20,6 +21,7 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
         return marginal.log_prob(observations)
 
     def marginal(self, function_dist, **kwargs):
+        # predictive distribution
         mean = function_dist.mean
         var = function_dist.variance
         link = mean.div(torch.sqrt(1 + var))
@@ -27,6 +29,8 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
         return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
 
     def expected_log_prob(self, observations, function_dist, *params, **kwargs):
+        # expected log likelihood over the variational GP distribution
+
         # if torch.any(observations.eq(-1)):
         #     # Remove after 1.0
         #     warnings.warn(

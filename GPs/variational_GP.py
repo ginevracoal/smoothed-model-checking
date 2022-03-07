@@ -15,6 +15,7 @@ from gpytorch.models import ApproximateGP
 from gpytorch.variational import VariationalStrategy
 from gpytorch.variational import MeanFieldVariationalDistribution
 
+import pickle5 as pickle
 
 
 class GPmodel(ApproximateGP):
@@ -33,15 +34,25 @@ class GPmodel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
 
-df = pd.read_csv("../BNNs/BNN_Learning/df.csv")
-print("\n", df.head(10))
+filename = "../Data/SIR/SIR_DS_20samples_5000obs_Beta.pickle"
+with open(filename, 'rb') as handle:
+    data = pickle.load(handle)
 
-squashed_df = squash_df(df)
-squashed_df['satisfaction_prob'] = squashed_df['Count_TRUE']/squashed_df['Count_ALL']
-print("\n", squashed_df.head())
+params = data['params']
+labels = data['labels']
+
+print("\nparams shape =", params.shape)
+print("labels shape =", labels.shape)
+print("n. unique params =", len(np.unique(params)))
+print("\nRow-wise True label counts:\n", [len(row[row==1.]) for row in labels])
 
 
-df_train, df_test = split_train_test(df)
+# squashed_df = squash_df(df)
+# squashed_df['satisfaction_prob'] = squashed_df['Count_TRUE']/squashed_df['Count_ALL']
+# print("\n", squashed_df.head())
+
+
+# df_train, df_test = split_train_test(df)
 
 ### Bernoulli likelihood
 
@@ -124,38 +135,21 @@ df_train, df_test = split_train_test(df)
 
 ### Binomial likelihood
 
+n_trials = labels.shape[1]
 
-squashed_df_train = squash_df(df_train)[['beta','gamma','Count_TRUE','Count_ALL']]
-squashed_df_test = squash_df(df_test)[['beta','gamma','Count_TRUE','Count_ALL']]
-squashed_df_train.rename(columns={'Count_TRUE': 'Result', 'Count_ALL':'Trials'}, inplace=True)
-squashed_df_test.rename(columns={'Count_TRUE': 'Result', 'Count_ALL':'Trials'}, inplace=True)
-
-# todo: set a fixed number of trials!
-n_trials = 10
-
-print(f"\ntraining set size = {len(squashed_df_train)}, test set size = {len(squashed_df_test)}\n")
-print(squashed_df_train)
-
-x_train = torch.tensor(squashed_df_train.drop('Result', axis=1).values, dtype=torch.float32)
-y_train = torch.tensor(squashed_df_train['Result'].values, dtype=torch.float32)
-train = data_utils.TensorDataset(x_train, y_train)
+params_tensor = torch.tensor(params, dtype=torch.float32)
+labels_tensor = torch.tensor(labels, dtype=torch.float32)
+train = data_utils.TensorDataset(params_tensor, labels_tensor)
 train_loader = data_utils.DataLoader(train, batch_size=10, shuffle=True)
 
-x_test = torch.tensor(squashed_df_test.drop('Result', axis=1).values, dtype=torch.float32)
-y_test = torch.tensor(squashed_df_test['Result'].values, dtype=torch.float32)
-
-model = GPmodel(inducing_points=x_train)
+model = GPmodel(inducing_points=params_tensor)
 likelihood = BinomialLikelihood(n_trials=n_trials)
 
 model.train()
 likelihood.train()
 
-optimizer = torch.optim.Adam([
-    {'params': model.parameters()},
-    {'params': likelihood.parameters()},
-], lr=0.01)
-
-elbo = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=y_train.size(0))
+optimizer = torch.optim.Adam([{'params': model.parameters()}, {'params': likelihood.parameters()}], lr=0.01)
+elbo = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=len(labels_tensor))
 
 num_epochs = 10
 
