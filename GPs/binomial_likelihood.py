@@ -30,20 +30,6 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
 
     def expected_log_prob(self, observations, function_dist, *params, **kwargs):
         # expected log likelihood over the variational GP distribution
-
-        # if torch.any(observations.eq(-1)):
-        #     # Remove after 1.0
-        #     warnings.warn(
-        #         "BernoulliLikelihood.expected_log_prob expects observations with labels in {0, 1}. "
-        #         "Observations with labels in {-1, 1} are deprecated.",
-        #         DeprecationWarning,
-        #     )
-        # else:
-        #     observations = observations.mul(2).sub(1)
-
-        # Custom function here so we can use log_normal_cdf rather than Normal.cdf
-        # This is going to be less prone to overflow errors
-        print(observations)
         log_prob_lambda = lambda function_samples: log_normal_cdf(function_samples.mul(observations))
         log_prob = self.quadrature(log_prob_lambda, function_dist)
         return log_prob
