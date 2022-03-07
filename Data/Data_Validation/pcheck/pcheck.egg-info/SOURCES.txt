@@ -1,0 +1,12 @@
+setup.py
+pcheck.egg-info/PKG-INFO
+pcheck.egg-info/SOURCES.txt
+pcheck.egg-info/dependency_links.txt
+pcheck.egg-info/not-zip-safe
+pcheck.egg-info/top_level.txt
+semantics/__init__.py
+series/SpaceTimeSignal.py
+series/SpatialSignal.py
+series/TimeSeries.py
+series/TimeSignal.py
+series/__init__.py
