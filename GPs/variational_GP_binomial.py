@@ -33,18 +33,21 @@ class GPmodel(ApproximateGP):
         covar = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
-for filename in [
-    "SIR_DS_200samples_10obs_Beta",
-    "SIR_DS_200samples_10obs_Gamma",
-    "SIR_DS_20samples_5000obs_Beta",
-    "SIR_DS_20samples_5000obs_Gamma",
-    "SIR_DS_256samples_10obs_BetaGamma",
-    "SIR_DS_256samples_5000obs_BetaGamma",
+for dirname, filename in [
+    # ["Poisson","Poisson_DS_46samples_1obs_Lambda"],
+    # ["Poisson","Poisson_DS_46samples_5obs_Lambda"],
+    # ["Poisson","Poisson_DS_46samples_10obs_Lambda"],
+    ["SIR", "SIR_DS_20samples_5000obs_Beta"],
+    ["SIR", "SIR_DS_20samples_5000obs_Gamma"],
+    ["SIR", "SIR_DS_200samples_10obs_Beta"],
+    ["SIR", "SIR_DS_200samples_10obs_Gamma"],
+    ["SIR", "SIR_DS_256samples_10obs_BetaGamma"],
+    ["SIR", "SIR_DS_256samples_5000obs_BetaGamma"],
     ]:
 
     print(f"\n=== {filename} ===")
 
-    with open(f"../Data/SIR/{filename}.pickle", 'rb') as handle:
+    with open(f"../Data/{dirname}/{filename}.pickle", 'rb') as handle:
         data = pickle.load(handle)
 
     params = torch.tensor(data['params'], dtype=torch.float32)
@@ -59,7 +62,7 @@ for filename in [
 
     n_trials = labels.shape[1]
 
-    params_tensor = params.flatten()
+    params_tensor = params
     labels_tensor = torch.tensor(success_counts, dtype=torch.float32)
     train = data_utils.TensorDataset(params_tensor, labels_tensor)
     train_loader = data_utils.DataLoader(train, batch_size=10, shuffle=True)
@@ -88,6 +91,7 @@ for filename in [
 
     os.makedirs(os.path.dirname('models/'), exist_ok=True)
     torch.save(model.state_dict(), f'models/gp_state_{filename}.pth')
+
     state_dict = torch.load(f'models/gp_state_{filename}.pth')
     model.load_state_dict(state_dict)
 
@@ -95,19 +99,33 @@ for filename in [
     likelihood.eval()
 
     with torch.no_grad():
-        x_test = torch.linspace(params_tensor.min(), params_tensor.max(), 100)
+        x_test = []
+        for col_idx in range(params_tensor.shape[1]):
+            single_param_values = params_tensor[:,col_idx]
+            x_test.append(torch.linspace(single_param_values.min(), single_param_values.max(), 100))
+
+        x_test = torch.stack(x_test, dim=1)
         observed_pred = likelihood(model(x_test))
         pred_labels = observed_pred.mean
         pred_variance = observed_pred.variance
 
-
-    path='plots/'
+    path='plots/'+dirname+'/'
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-    sns.scatterplot(x=params_tensor, y=labels_tensor, ax=ax)
-    sns.lineplot(x=x_test, y=pred_labels, ax=ax)
-    ax.fill_between(x_test.numpy(), pred_labels-pred_variance, pred_labels+pred_variance, alpha=0.5)
+    n_params = params_tensor.shape[1]
+    
+    fig, ax = plt.subplots(1, n_params, figsize=(6*n_params, 5))
+
+    for col_idx in range(params_tensor.shape[1]):
+        single_param_values = params_tensor[:,col_idx]
+        single_param_x_test = x_test[:,col_idx]
+
+        axis = ax if n_params==1 else ax[col_idx]
+        sns.scatterplot(x=single_param_values, y=labels_tensor, ax=axis)
+        sns.lineplot(x=single_param_x_test, y=pred_labels, ax=axis)
+        axis.fill_between(single_param_x_test.numpy(), pred_labels-pred_variance, pred_labels+pred_variance, 
+                        alpha=0.5)
+    
     fig.savefig(path+f"lineplot_{filename}.png")
     plt.close()
 
