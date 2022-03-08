@@ -7,26 +7,25 @@ from gpytorch.likelihoods.likelihood import _OneDimensionalLikelihood
 
 class BinomialLikelihood(_OneDimensionalLikelihood):
 
-    def __init__(self, n_trials):
+    def __init__(self):
         super(BinomialLikelihood, self).__init__()
-        self.n_trials = n_trials
 
-    def forward(self, function_samples, **kwargs):
+    def forward(self, function_samples, n_trials, **kwargs):
         # conditional distribution p(y|f(x))
         output_probs = base_distributions.Normal(0, 1).cdf(function_samples)
-        return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
+        return base_distributions.Binomial(total_count=n_trials, probs=output_probs)
 
     def log_marginal(self, observations, function_dist, *args, **kwargs):
         marginal = self.marginal(function_dist, *args, **kwargs)
         return marginal.log_prob(observations)
 
-    def marginal(self, function_dist, **kwargs):
+    def marginal(self, function_dist, n_trials, **kwargs):
         # predictive distribution
         mean = function_dist.mean
         var = function_dist.variance
         link = mean.div(torch.sqrt(1 + var))
         output_probs = base_distributions.Normal(0, 1).cdf(link)
-        return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
+        return base_distributions.Binomial(total_count=n_trials, probs=output_probs)
 
     def expected_log_prob(self, observations, function_dist, *params, **kwargs):
         # expected log likelihood over the variational GP distribution
