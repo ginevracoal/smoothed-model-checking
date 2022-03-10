@@ -1,16 +1,16 @@
 import torch
 import gpytorch
 from gpytorch.models import ApproximateGP
-from gpytorch.variational import VariationalStrategy
-from gpytorch.variational import MeanFieldVariationalDistribution
+from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
+from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
 
 
 class GPmodel(ApproximateGP):
 
     def __init__(self, inducing_points):
-        variational_distribution = MeanFieldVariationalDistribution(inducing_points.size(0))
-        variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
-                                                    learn_inducing_locations=False)
+        variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
+        variational_strategy = UnwhitenedVariationalStrategy(self, inducing_points, variational_distribution, 
+                                                    learn_inducing_locations=True)
         super(GPmodel, self).__init__(variational_strategy)
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
@@ -21,13 +21,13 @@ class GPmodel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
 
-
 def train_GP(model, likelihood, x_train, y_train, num_epochs):
 
     model.train()
     likelihood.train()
 
-    optimizer = torch.optim.Adam([{'params': model.parameters()}, {'params': likelihood.parameters()}], lr=0.01)
+    # optimizer = torch.optim.Adam([{'params': model.parameters()}, {'params': likelihood.parameters()}], lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     elbo = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=len(x_train))
 
     print()
