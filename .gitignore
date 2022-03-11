@@ -1,6 +1,7 @@
 *__pycache__/
 *.pickle
 *.png
+*screenlog.0
 
 venv/
 Data/

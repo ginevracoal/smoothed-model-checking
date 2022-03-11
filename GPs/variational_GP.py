@@ -1,3 +1,4 @@
+import time
 import torch
 import gpytorch
 from gpytorch.models import ApproximateGP
@@ -21,22 +22,31 @@ class GPmodel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
 
-def train_GP(model, likelihood, x_train, y_train, num_epochs):
+def execution_time(start, end):
+    hours, rem = divmod(end - start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print("\nExecution time = {:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds)))
+
+
+def train_GP(model, likelihood, x_train, y_train, n_epochs, lr):
 
     model.train()
     likelihood.train()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     elbo = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=len(x_train))
 
     print()
-    for i in range(num_epochs):
+    start = time.time()
+    for i in range(n_epochs):
         optimizer.zero_grad()
         output = model(x_train)
         loss = -elbo(output, y_train)
         loss.backward()
         optimizer.step()
-        print(f"Epoch {i}/{num_epochs} - Loss: {loss}")
+        print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
+
+    execution_time(start=start, end=time.time())
 
     print("\nModel params:", model.state_dict().keys())
     return model
