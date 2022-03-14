@@ -30,7 +30,7 @@ softplus = torch.nn.Softplus()
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, train_set, val_set, input_size, n_hidden = 10):
+    def __init__(self, casestudy_id, train_set, val_set, input_size, n_hidden = 10):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
@@ -43,7 +43,9 @@ class BNN_smMC(PyroModule):
         self.input_size = input_size
         self.n_hidden = n_hidden
         self.output_size = 1
-        self.n_val_preds = 100
+        self.n_test_preds = 500
+        self.n_test_points = 120
+        self.casestudy_id = casestudy_id
 
     def load_train_data(self):
         with open(self.train_set_fn, 'rb') as handle:
@@ -57,18 +59,13 @@ class BNN_smMC(PyroModule):
         self.M_train = M_train
         self.n_training_points = n_train_points
         self.T_train = np.sum(P_train,axis=1)
-
         xmax = np.max(self.X_train, axis = 0)
         xmin = np.min(self.X_train, axis = 0)
-        #tmax = np.max(np.max(self.T_train, axis = 0), axis = 0)
-        #tmin = np.min(np.min(self.T_train, axis = 0), axis = 0)
         self.MAX = xmax
         self.MIN = xmin
 
         self.X_train_scaled = -1+2*(self.X_train-self.MIN)/(self.MAX-self.MIN)
-        #self.T_train_scaled = -1+2*(self.T_train-self.MIN[1])/(self.MAX[1]-self.MIN[1])
-        #self.X_train_scaled = self.X_train
-        self.T_train_scaled = self.T_train
+        self.T_train_scaled = np.expand_dims(self.T_train, axis=1)
 
     def load_val_data(self):
         with open(self.val_set_fn, 'rb') as handle:
@@ -82,8 +79,7 @@ class BNN_smMC(PyroModule):
         self.M_val = M_val
         self.n_val_points = n_val_points
         self.T_val = np.sum(P_val,axis=1)
-        
-        #self.X_val_scaled = self.X_val
+
         self.X_val_scaled = -1+2*(self.X_val-self.MIN)/(self.MAX-self.MIN)
         
         self.T_val_scaled = self.T_val
@@ -95,7 +91,7 @@ class BNN_smMC(PyroModule):
         # set Gaussian priors on the weights of self.det_network
         for key, value in self.det_network.state_dict().items():
             loc = torch.zeros_like(value)
-            scale = torch.ones_like(value)
+            scale = torch.ones_like(value)#/value.size(dim=0)
             prior = Normal(loc=loc, scale=scale)
             priors.update({str(key):prior})
 
@@ -106,13 +102,11 @@ class BNN_smMC(PyroModule):
     
 
         # samples are conditionally independent w.r.t. the observed data
-        with pyro.plate("data", len(x_data)):
+        #with pyro.plate("data", len(x_data)):
 
-            lhat = lifted_module(x_data) # out.shape = (batch_size, num_classes)
-        
-            obs = pyro.sample("obs", Binomial(total_count=self.M_train, probs=lhat), obs=y_data)
-            
-
+        lhat = lifted_module(x_data) # out.shape = (batch_size, num_classes)
+        pyro.sample("obs", Binomial(total_count=self.M_train, probs=lhat), obs=y_data)
+         
     def guide(self, x_data, y_data=None):
 
         dists = {}
@@ -128,18 +122,18 @@ class BNN_smMC(PyroModule):
 
             # add key-value pair to the samples dictionary
             dists.update({str(key):distr})
-        
         # define a random module from the dictionary of distributions
         lifted_module = pyro.random_module("module", self.det_network, dists)()
 
-        with pyro.plate("data", len(x_data)):
+        #with pyro.plate("data", len(x_data)):
             
             #************************************* PERPLESSITA' QUI *************************************
             # compute predictions on `x_data`
-            lhat = lifted_module(x_data)
+        lhat = lifted_module(x_data)
             
         return lhat
 
+    
     def forward(self, inputs):
         """ Compute predictions on `inputs`. 
         `n_samples` is the number of samples from the posterior distribution.
@@ -147,35 +141,34 @@ class BNN_smMC(PyroModule):
         `inputs`, otherwise it returns all predictions 
         """
         
-
         preds = []
         # take multiple samples
-        for _ in range(self.n_val_preds):         
-            guide_trace = poutine.trace(self.guide).get_trace(inputs)  
+        for _ in range(self.n_test_preds):         
+            guide_trace = poutine.trace(self.guide).get_trace(inputs)
             preds.append(guide_trace.nodes['_RETURN']['value'])
         
         t_hats = torch.stack(preds)
         t_mean = torch.mean(t_hats, 0).numpy()
         t_std = torch.std(t_hats, 0).numpy()
-
+        
         return preds, t_mean, t_std
-
-
+    
+        
 
 
     def set_training_options(self, n_epochs = 1000, lr = 0.01):
 
         self.n_epochs = n_epochs
         self.lr = lr
-        #self.net = NN(self.input_size,self.n_hidden,self.output_size)
-
+ 
 
     def train(self):
 
-        #adam_params = {"lr": self.lr}
-        adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
+        #adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
+        adam_params = {"lr": self.lr}
         optim = Adam(adam_params)
-        elbo = Trace_ELBO()
+        #elbo = Trace_ELBO()
+        elbo = TraceMeanField_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
 
         batch_T_t = torch.FloatTensor(self.T_train_scaled)
@@ -197,34 +190,53 @@ class BNN_smMC(PyroModule):
 
         # it prints the histogram comparison and returns the wasserstein distance over the test set
 
-        X_val_t = torch.FloatTensor(self.X_val_scaled)
+        #X_val_t = torch.FloatTensor(self.X_val_scaled)
 
         with torch.no_grad():
 
-            T_val_bnn, val_mean_pred, val_std_pred = self.forward(X_val_t)
+            x_test_t = []
+            x_test_unscaled_t = []
+            for col_idx in range(self.input_size):
+                single_param_values = self.X_val_scaled[:,col_idx]
+                single_param_values_unscaled = self.X_val[:,col_idx]
+                x_test_t.append(torch.linspace(single_param_values.min(), single_param_values.max(), self.n_test_points))
+                x_test_unscaled_t.append(torch.linspace(single_param_values_unscaled.min(), single_param_values_unscaled.max(), self.n_test_points))
+            x_test_t = torch.stack(x_test_t, dim=1)
+            x_test = x_test_t.numpy()
+            x_test_unscaled = torch.stack(x_test_unscaled_t, dim=1).numpy()
+            
+            T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_t)
         
-        MSE = np.mean((self.T_val_scaled-val_mean_pred)**2)
+        #MSE = np.mean((self.T_val_scaled-val_mean_pred)**2)
+        MSE = 0
 
-        plot_path = "BNN_Plots"
+        plot_path = "BNN_Plots_"+self.casestudy_id
 
         if iter_id:
-            BNN_PP = plot_path+"/3L_Arch_{}/".format(fld_id)
+            BNN_PP = plot_path+"/1L_Arch_{}/".format(fld_id)
         else:
-            BNN_PP = plot_path+"/3L_Arch_{}/".format(fld_id)
+            BNN_PP = plot_path+"/1L_Arch_{}/".format(fld_id)
         os.makedirs(BNN_PP, exist_ok=True)
 
         self.results_path = BNN_PP
     
+
         fig = plt.figure()
-        plt.plot(np.arange(int(self.n_epochs/50)), np.array(self.loss_history))
+        plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
         plt.title("loss")
         plt.savefig(BNN_PP+"loss.png")
 
+
         if self.input_size == 1:
             fig = plt.figure()
-            plt.plot(self.X_val_scaled.flatten(), self.T_val_scaled/self.M_val, 'b', label="valid")
-            plt.plot(self.X_val_scaled.flatten(), val_mean_pred, 'r', label="bnn")
-            plt.fill_between(self.X_val_scaled.flatten(), val_mean_pred.flatten()-1.96*val_std_pred.flatten()/np.sqrt(self.n_val_preds), val_mean_pred.flatten()+1.96*val_std_pred.flatten()/np.sqrt(self.n_val_preds), color='r', alpha = 0.1)
+            if self.casestudy_id == "PoissonLambda":
+                poiss_satisf_fnc = lambda x: np.exp(-x)*(1+x+x**2/2+x**3/6)
+                plt.plot(x_test, poiss_satisf_fnc(x_test_unscaled), 'b', label="valid")
+            else: 
+                plt.plot(self.X_val_scaled.flatten(), self.T_val_scaled/self.M_val, 'b', label="valid")
+            plt.plot(x_test.flatten(), test_mean_pred, 'r', label="bnn")
+            plt.fill_between(x_test.flatten(), test_mean_pred.flatten()-1.96*test_std_pred.flatten(), test_mean_pred.flatten()+1.96*test_std_pred.flatten(), color='r', alpha = 0.1)#/np.sqrt(self.n_test_preds)
+            plt.scatter(self.X_train_scaled.flatten(), self.T_train_scaled.flatten()/self.M_train, marker='+', color='g', label="train")
             plt.legend()
             
             

@@ -5,8 +5,6 @@ import copy
 import random
 import numpy as np
 
-
-
 import torch
 torch.set_default_dtype(torch.float32)
 from torch import nn
@@ -32,15 +30,11 @@ class DeterministicNetwork(nn.Module):
         # architecture
         self.model = nn.Sequential(
                      nn.Linear(input_size, hidden_size),
-                     #nn.LeakyReLU(),
-                     nn.Tanh(),
-                     nn.Linear(hidden_size, hidden_size),
-                     nn.Tanh(),
-                     nn.Linear(hidden_size, hidden_size),
-                     nn.Tanh(),
+                     nn.LeakyReLU(),
                      nn.Linear(hidden_size, output_size),
-                     nn.Sigmoid())
-    
+                     nn.Sigmoid()
+                     )
+        # possibilità: togliere sigmoid da qui e metterla nel model della bnn
         self.name = "deterministic_network"
 
     def forward(self, inputs, *args, **kwargs):
