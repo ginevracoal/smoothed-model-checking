@@ -8,9 +8,16 @@ from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrat
 
 class GPmodel(ApproximateGP):
 
-    def __init__(self, inducing_points):
-        variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
-        variational_strategy = UnwhitenedVariationalStrategy(self, inducing_points, variational_distribution, 
+    def __init__(self, inducing_points, variational_distribution='cholesky'):
+
+        if variational_distribution=='cholesky':
+            variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
+        elif variational_distribution=='meanfield':
+            variational_distribution = MeanFieldVariationalDistribution(inducing_points.size(0))
+        else:
+            raise NotImplementedError
+
+        variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
                                                             learn_inducing_locations=False)
         super(GPmodel, self).__init__(variational_strategy)
         self.mean_module = gpytorch.means.ConstantMean()

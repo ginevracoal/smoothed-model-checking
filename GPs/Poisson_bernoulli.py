@@ -24,17 +24,22 @@ parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Numbe
 args = parser.parse_args()
 
 
-for train_filename, val_filename in [
-    ["SIR_DS_200samples_10obs_Beta", "SIR_DS_20samples_5000obs_Beta"],
-    ["SIR_DS_200samples_10obs_Gamma", "SIR_DS_20samples_5000obs_Gamma"],
-    ["SIR_DS_256samples_5000obs_BetaGamma", "SIR_DS_256samples_10obs_BetaGamma"]
+def satisfaction_function(lam):
+    lam = lam.clone().detach()
+    return torch.exp(-lam)*(1+lam+(lam**2)/2+(lam**3)/6)
+
+
+for train_filename in [
+    "Poisson_DS_46samples_1obs_Lambda", 
+    "Poisson_DS_46samples_5obs_Lambda",
+    "Poisson_DS_46samples_10obs_Lambda",
     ]:
 
     print(f"\n=== Training {train_filename} ===")
 
     out_filename = f"{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
 
-    with open(f"../Data/SIR/{train_filename}.pickle", 'rb') as handle:
+    with open(f"../Data/Poisson/{train_filename}.pickle", 'rb') as handle:
         data = pickle.load(handle)
     x_train, y_train, n_params = build_bernoulli_dataframe(data)
 
@@ -42,7 +47,7 @@ for train_filename, val_filename in [
 
     inducing_points = torch.tensor(data['params'], dtype=torch.float32)
 
-    model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution)
+    model = GPmodel(inducing_points=inducing_points)
     likelihood = gpytorch.likelihoods.BernoulliLikelihood()
 
     if args.train:
@@ -52,13 +57,9 @@ for train_filename, val_filename in [
         os.makedirs(os.path.dirname("models/"), exist_ok=True)
         torch.save(model.state_dict(), "models/gp_state_"+out_filename+".pth")
 
-    print(f"\n=== Validation {val_filename} ===")
+    print(f"\n=== Validation ===")
 
-    with open(f"../Data/SIR/{val_filename}.pickle", 'rb') as handle:
-        data = pickle.load(handle)
-    x_val, y_val, n_params, n_trials = build_binomial_dataframe(data)
-
-    model = GPmodel(inducing_points=inducing_points)
+    model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution)
     state_dict = torch.load("models/gp_state_"+out_filename+".pth")
     model.load_state_dict(state_dict)
 
@@ -71,8 +72,7 @@ for train_filename, val_filename in [
 
         x_test = []
         for col_idx in range(n_params):
-            single_param_values = x_val[:,col_idx]
-            x_test.append(torch.linspace(single_param_values.min(), single_param_values.max(), args.n_test_points))
+            x_test.append(torch.linspace(0.1, 5, 100))
         x_test = torch.stack(x_test, dim=1)
 
         n_bernoulli_samples = args.n_posterior_samples
@@ -87,23 +87,24 @@ for train_filename, val_filename in [
     # lower_ci = pred_mean-z*pred_std/sqrt(n_bernoulli_samples)
     # upper_ci = pred_mean+z*pred_std/sqrt(n_bernoulli_samples)
  
-    path='plots/SIR/'
+    path='plots/Poisson/'
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
     fig, ax = plt.subplots(1, n_params, figsize=(6*n_params, 5))
 
     for col_idx in range(n_params):
-        single_param_x_train = x_train[:,col_idx]
-        single_param_x_val = x_val[:,col_idx]
+        single_param_x_train = x_train_bin[:,col_idx]
         single_param_x_test = x_test[:,col_idx]
 
         axis = ax if n_params==1 else ax[col_idx]
-        sns.scatterplot(x=single_param_x_val, y=y_val/n_trials, ax=axis, label='validation pts')
-        sns.scatterplot(x=single_param_x_train, y=y_train_bin.flatten()/n_trials_train, ax=axis, label='training points')
 
         sns.lineplot(x=single_param_x_test, y=posterior_bernoulli.mean, ax=axis, label='posterior')
+        sns.scatterplot(x=single_param_x_train, y=y_train_bin.flatten()/n_trials_train, ax=axis, label='training points')
         axis.fill_between(single_param_x_test.numpy(), posterior_bernoulli.mean-posterior_bernoulli.variance, 
             posterior_bernoulli.mean+posterior_bernoulli.variance, alpha=0.5)
+
+        sns.lineplot(x=single_param_x_test, y=satisfaction_function(single_param_x_test), ax=axis, 
+            label='true satisfaction')
 
     fig.savefig(path+f"bernoulli_"+out_filename+".png")
     plt.close()
