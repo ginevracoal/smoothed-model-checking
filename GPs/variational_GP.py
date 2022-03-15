@@ -8,7 +8,7 @@ from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrat
 
 class GPmodel(ApproximateGP):
 
-    def __init__(self, inducing_points, variational_distribution='cholesky'):
+    def __init__(self, inducing_points, variational_distribution='cholesky', variational_strategy='default'):
 
         if variational_distribution=='cholesky':
             variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
@@ -17,8 +17,15 @@ class GPmodel(ApproximateGP):
         else:
             raise NotImplementedError
 
-        variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
-                                                            learn_inducing_locations=False)
+        if variational_strategy=='default':
+            variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
+                                                                learn_inducing_locations=False)
+        elif variational_strategy=='unwhitened':
+            variational_strategy = UnwhitenedVariationalStrategy(self, inducing_points, variational_distribution, 
+                                                                learn_inducing_locations=False)
+        else:
+            raise NotImplementedError
+
         super(GPmodel, self).__init__(variational_strategy)
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())

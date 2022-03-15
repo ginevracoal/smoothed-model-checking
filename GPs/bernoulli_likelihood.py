@@ -5,17 +5,15 @@ from gpytorch.distributions import base_distributions
 from gpytorch.likelihoods.likelihood import _OneDimensionalLikelihood
 
 
-class BinomialLikelihood(_OneDimensionalLikelihood):
+class BernoulliLikelihood(_OneDimensionalLikelihood):
 
     def __init__(self):
-        super(BinomialLikelihood, self).__init__()
+        super(BernoulliLikelihood, self).__init__()
 
     def forward(self, function_samples, **kwargs):
         # conditional distribution p(y|f(x))
-        # print("\nfwd function_samples", function_samples.shape)
         output_probs = torch.tensor(base_distributions.Normal(0, 1).cdf(function_samples))
-        # print("\nfwd output_probs", output_probs.shape)
-        return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
+        return base_distributions.Bernoulli(probs=output_probs)
 
     def log_marginal(self, observations, function_dist, *args, **kwargs):
         marginal = self.marginal(function_dist, *args, **kwargs)
@@ -27,30 +25,31 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
         var = function_dist.variance
         link = mean.div(torch.sqrt(1 + var))
         output_probs = base_distributions.Normal(0, 1).cdf(link)
-        return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
+        return base_distributions.Bernoulli(probs=output_probs)
 
     def expected_log_prob(self, observations, function_dist, *params, **kwargs):
-
-        raise NotImplementedError
+        if torch.any(observations.eq(-1)):
+            # Remove after 1.0
+            warnings.warn(
+                "BernoulliLikelihood.expected_log_prob expects observations with labels in {0, 1}. "
+                "Observations with labels in {-1, 1} are deprecated.",
+                DeprecationWarning,
+            )
+        else:
+            observations = observations.mul(2).sub(1)
 
         # expected log likelihood over the variational GP distribution
 
         # def log_prob_lambda(function_samples):
         #     print(function_samples)
         #     print(observations)
+        #     print((function_samples.mul(observations)))
         #     print(function_samples.shape)
         #     print(observations.shape)
         #     print((function_samples.mul(observations)).shape)
-        #     print(self.n_trials)
         #     exit()
         #     return log_normal_cdf(function_samples.mul(observations))
 
-        # log_prob_lambda = lambda function_samples: log_normal_cdf(function_samples.mul(observations))
-
-        # log_prob = self.quadrature(log_prob_lambda, function_dist)
-        # log_prob = 
-        print(log_prob)
-        print(log_prob.shape)
-        exit()
+        log_prob_lambda = lambda function_samples: log_normal_cdf(function_samples.mul(observations))
+        log_prob = self.quadrature(log_prob_lambda, function_dist)
         return log_prob
-
