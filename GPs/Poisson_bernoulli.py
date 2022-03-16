@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from math import sqrt
-import pickle5 as pickle
+import pickle
 import matplotlib.pyplot as plt
-
+from gpytorch.functions import log_normal_cdf
 from variational_GP import GPmodel, train_GP 
 from data_utils import build_bernoulli_dataframe, build_binomial_dataframe
 
@@ -21,7 +21,7 @@ parser.add_argument("--train", default=True, type=eval, help="If True train the 
 parser.add_argument("--n_epochs", default=1000, type=int, help="Number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_test_points", default=100, type=int, help="Number of test params")
-parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=500, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
 
@@ -31,16 +31,16 @@ def satisfaction_function(lam):
 
 
 for train_filename in [
-    "Poisson_DS_46samples_1obs_Lambda", 
-    "Poisson_DS_46samples_5obs_Lambda",
-    "Poisson_DS_46samples_10obs_Lambda",
+    "Poisson_DS_46samples_1obs_lambda", 
+    "Poisson_DS_46samples_5obs_lambda",
+    "Poisson_DS_46samples_10obs_lambda",
     ]:
 
     print(f"\n=== Training {train_filename} ===")
 
     out_filename = f"bernoulli_{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
 
-    with open(f"../Data/Poisson/{train_filename}.pickle", 'rb') as handle:
+    with open(f"../Data/WorkingDatasets/Poisson/{train_filename}.pickle", 'rb') as handle:
         data = pickle.load(handle)
     x_train, y_train, n_params = build_bernoulli_dataframe(data)
 
@@ -74,17 +74,14 @@ for train_filename in [
             x_test.append(torch.linspace(0.1, 5, 100))
         x_test = torch.stack(x_test, dim=1)
 
-        posterior_bernoulli = likelihood(model(x_test)) 
-        pred_samples = posterior_bernoulli.sample(sample_shape=torch.Size((args.n_posterior_samples,)))
+        posterior_binomial = model(x_test)
+        post_samples = posterior_binomial.sample(sample_shape=torch.Size((args.n_posterior_samples,)))
+        pred_samples = [[torch.exp(log_normal_cdf(post_samples[j, i])) for i in range(args.n_test_points)] for j in range(args.n_posterior_samples)]
+        pred_samples = torch.tensor(pred_samples)
+        z = 1.96
+        mu = torch.mean(pred_samples, dim=0)
+        sigma = torch.std(pred_samples, dim=0)
 
-        print("\npred_samples.shape =", pred_samples.shape, "= (n. bernoulli samples, n. test params)")
-
-    # z = 1.96
-    # pred_mean = pred_samples.mean(0)
-    # pred_std = pred_samples.std(0)
-    # lower_ci = pred_mean-z*pred_std/sqrt(n_bernoulli_samples)
-    # upper_ci = pred_mean+z*pred_std/sqrt(n_bernoulli_samples)
- 
     path='plots/Poisson/'
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
@@ -96,9 +93,8 @@ for train_filename in [
 
         axis = ax if n_params==1 else ax[col_idx]
 
-        sns.lineplot(x=single_param_x_test, y=posterior_bernoulli.mean, ax=axis, label='posterior')
-        axis.fill_between(single_param_x_test.numpy(), posterior_bernoulli.mean-posterior_bernoulli.variance, 
-            posterior_bernoulli.mean+posterior_bernoulli.variance, alpha=0.5)
+        sns.lineplot(x=single_param_x_test.numpy(), y=mu, ax=axis, label='posterior')
+        axis.fill_between(single_param_x_test.numpy(), mu-z*sigma, mu+z*sigma, alpha=0.5)
 
         sns.lineplot(x=single_param_x_test, y=satisfaction_function(single_param_x_test), ax=axis, 
             label='true satisfaction')

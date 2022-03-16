@@ -12,9 +12,7 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
 
     def forward(self, function_samples, **kwargs):
         # conditional distribution p(y|f(x))
-        # print("\nfwd function_samples", function_samples.shape)
         output_probs = torch.tensor(base_distributions.Normal(0, 1).cdf(function_samples))
-        # print("\nfwd output_probs", output_probs.shape)
         return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
 
     def log_marginal(self, observations, function_dist, *args, **kwargs):
@@ -30,27 +28,17 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
         return base_distributions.Binomial(total_count=self.n_trials, probs=output_probs)
 
     def expected_log_prob(self, observations, function_dist, *params, **kwargs):
-
-        raise NotImplementedError
+        flat_obs = observations.flatten()
+        n = torch.tensor([self.n_trials for _ in range(len(flat_obs))], dtype=torch.float32)
 
         # expected log likelihood over the variational GP distribution
 
-        # def log_prob_lambda(function_samples):
-        #     print(function_samples)
-        #     print(observations)
-        #     print(function_samples.shape)
-        #     print(observations.shape)
-        #     print((function_samples.mul(observations)).shape)
-        #     print(self.n_trials)
-        #     exit()
-        #     return log_normal_cdf(function_samples.mul(observations))
+        def log_prob_lambda(function_samples):
+            log_bin_coeff = torch.lgamma(n + 1) - torch.lgamma((n - flat_obs) + 1) - torch.lgamma(flat_obs + 1)
+            second_log_trm = observations.mul(log_normal_cdf(function_samples))+(self.n_trials-observations).mul(log_normal_cdf(-function_samples))
+            return log_bin_coeff+second_log_trm
 
-        # log_prob_lambda = lambda function_samples: log_normal_cdf(function_samples.mul(observations))
+        log_prob = self.quadrature(log_prob_lambda, function_dist)
 
-        # log_prob = self.quadrature(log_prob_lambda, function_dist)
-        # log_prob = 
-        print(log_prob)
-        print(log_prob.shape)
-        exit()
         return log_prob
 

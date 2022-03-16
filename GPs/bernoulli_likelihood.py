@@ -40,16 +40,6 @@ class BernoulliLikelihood(_OneDimensionalLikelihood):
 
         # expected log likelihood over the variational GP distribution
 
-        # def log_prob_lambda(function_samples):
-        #     print(function_samples)
-        #     print(observations)
-        #     print((function_samples.mul(observations)))
-        #     print(function_samples.shape)
-        #     print(observations.shape)
-        #     print((function_samples.mul(observations)).shape)
-        #     exit()
-        #     return log_normal_cdf(function_samples.mul(observations))
-
         log_prob_lambda = lambda function_samples: log_normal_cdf(function_samples.mul(observations))
         log_prob = self.quadrature(log_prob_lambda, function_dist)
         return log_prob

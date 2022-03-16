@@ -7,10 +7,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from math import sqrt
-import pickle5 as pickle
+import pickle
 import matplotlib.pyplot as plt
 import torch.utils.data as data_utils
-
+from gpytorch.functions import log_normal_cdf
 from variational_GP import GPmodel, train_GP 
 from data_utils import build_binomial_dataframe
 from binomial_likelihood import BinomialLikelihood
@@ -23,25 +23,26 @@ parser.add_argument("--train", default=True, type=eval, help="If True train the 
 parser.add_argument("--n_epochs", default=1000, type=int, help="Number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_test_points", default=100, type=int, help="Number of test params")
-parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=500, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
 
 for train_filename, val_filename in [
-    ["SIR_DS_200samples_10obs_Beta", "SIR_DS_20samples_5000obs_Beta"],
-    # ["SIR_DS_200samples_10obs_Gamma", "SIR_DS_20samples_5000obs_Gamma"],
-    # ["SIR_DS_256samples_5000obs_BetaGamma", "SIR_DS_256samples_10obs_BetaGamma"]
+    ["SIR_DS_200samples_10obs_beta", "SIR_DS_20samples_5000obs_beta"],
+     ["SIR_DS_200samples_10obs_gamma", "SIR_DS_20samples_5000obs_gamma"],
+    # ["SIR_DS_256samples_5000obs_betagamma", "SIR_DS_256samples_10obs_betagamma"]
     ]:
 
     print(f"\n=== Training {train_filename} ===")
 
     out_filename = f"binomial_{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
 
-    with open(f"../Data/SIR/{train_filename}.pickle", 'rb') as handle:
+    with open(f"../Data/WorkingDatasets/SIR/{train_filename}.pickle", 'rb') as handle:
         data = pickle.load(handle)
     x_train, y_train, n_params, n_trials_train = build_binomial_dataframe(data)
+    inducing_points = torch.tensor(data['params'], dtype=torch.float32)
 
-    model = GPmodel(inducing_points=x_train, variational_distribution=args.variational_distribution,
+    model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution,
         variational_strategy=args.variational_strategy)
     likelihood = BinomialLikelihood()
     likelihood.n_trials = n_trials_train
@@ -58,10 +59,9 @@ for train_filename, val_filename in [
     model.eval()    
     likelihood.eval()
 
-    with open(f"../Data/SIR/{val_filename}.pickle", 'rb') as handle:
+    with open(f"../Data/WorkingDatasets/SIR/{val_filename}.pickle", 'rb') as handle:
         data = pickle.load(handle)
     x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(data)
-    likelihood.n_trials = n_trials_val
 
     state_dict = torch.load(f'models/gp_state_{out_filename}.pth')
     model.load_state_dict(state_dict)
@@ -77,14 +77,17 @@ for train_filename, val_filename in [
         if n_params==2:
             x_test = torch.tensor(list(product(x_test[:,0], x_test[:,1])))
 
-        posterior_binomial = likelihood(model(x_test))
-        # pred_samples = posterior_binomial.sample(sample_shape=torch.Size((args.n_posterior_samples,)))
-
+        #posterior_binomial = likelihood(model(x_test))
+        posterior_binomial = model(x_test)
+        post_samples = posterior_binomial.sample(sample_shape=torch.Size((args.n_posterior_samples,)))
+        pred_samples = [[torch.exp(log_normal_cdf(post_samples[j, i])) for i in range(args.n_test_points)] for j in range(args.n_posterior_samples)]
+        pred_samples = torch.tensor(pred_samples)
+        z = 1.96
+        mu = torch.mean(pred_samples, dim=0)
+        sigma = torch.std(pred_samples, dim=0)
+        
     path='plots/SIR/'
     os.makedirs(os.path.dirname(path), exist_ok=True)
-
-    mu = posterior_binomial.mean/n_trials_val
-    sigma = posterior_binomial.variance/n_trials_val
 
     if n_params==1:
 
@@ -95,7 +98,7 @@ for train_filename, val_filename in [
             label='training points', marker='.', color='black')
 
         sns.lineplot(x=x_test.flatten(), y=mu, ax=ax, label='posterior')
-        ax.fill_between(x_test.flatten(), mu-sigma, mu+sigma, alpha=0.5)
+        ax.fill_between(x_test.flatten(), mu-z*sigma, mu+z*sigma, alpha=0.5)
 
     else:
         raise NotImplementedError
