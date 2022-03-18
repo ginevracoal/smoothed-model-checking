@@ -35,10 +35,11 @@ def fill_dictionary_with_parameters(arguments):
     
     return D
 
-if __name__ == "__main__":
+def run_trajectories_generation(model_name, latin_flag = False):
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--modelName", type=str,default='SIR', help="Model name(without suffix .psc")
+    parser.add_argument("--modelName", type=str,default=model_name, help="Model name(without suffix .psc")
+    parser.add_argument("--latinFlag", type=str,default=latin_flag, help="Activates latin hyper-cube sampling")
 
     D = fill_dictionary_with_parameters(parser.parse_args())
     
@@ -48,9 +49,7 @@ if __name__ == "__main__":
     # Generator
     G.generate()
 
-    # Save data to folder
-    G.save_dataset_values()
-
+    return G
     
     
 

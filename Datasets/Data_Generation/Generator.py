@@ -13,8 +13,9 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from datetime import datetime
 import json
+from smt.sampling_methods import LHS
 
-
+# TODO: latin hypercube sampling
 class Generator(object):
    
     def __init__(self, argsDictionary):
@@ -102,9 +103,10 @@ class Generator(object):
         paramsDictionary['state_space_dim'] = int(paramsDictionary['state_space_dim'])
         paramsDictionary['param_space_dim'] = int(paramsDictionary['param_space_dim'])
         paramsDictionary['n_trajs'] = int(paramsDictionary['n_trajs'])
-        
+
         # Create grid of parameters for simulation
         paramsDictionary['paramsGrid'] = self.generateGrid(paramsDictionary)
+        paramsDictionary['paramsLatinGrid'] = self.generateLatinGrid(paramsDictionary)
         
         # How many set of parameters, How many points per set of states. 
         paramsDictionary['n_combination'] =  paramsDictionary['paramsGrid'].shape[0]
@@ -115,12 +117,28 @@ class Generator(object):
         return paramsDictionary
      
     def generateGrid(self,paramsDictionary):
+
+        # UNIFORM GRID
+
         L = []
         for p, lower,upper in zip(paramsDictionary['params'],paramsDictionary['params_min'],paramsDictionary['params_max']):
             bounds = np.linspace(lower, upper, num=int(paramsDictionary['n_steps_param']))
             L.append(bounds) 
         cartesian_product = np.array(list(itertools.product(*L)))
         return cartesian_product
+
+    def generateLatinGrid(self,paramsDictionary):
+
+        # RANDOM UNIFORM SAMPLING
+
+        bounds = []
+        for i in range(paramsDictionary["param_space_dim"]):
+            bounds.append([paramsDictionary['params_min'][i], paramsDictionary['params_max'][i]])
+        lhs_bounds = np.array(bounds)
+        sampling_fnc = LHS(xlimits=lhs_bounds)
+        n_latin_samples = int(paramsDictionary["n_steps_param"]**paramsDictionary["param_space_dim"])
+        sampled_parameters = sampling_fnc(n_latin_samples)
+        return sampled_parameters
     
     # questo mancava nel codice di Paolo
     def set_parameters(self, set_param):
@@ -153,7 +171,12 @@ class Generator(object):
         extern_counter=0
         
         # ForEach set of params
-        for param_set in tqdm(self.D['paramsGrid']): 
+        if eval(self.D["latinFlag"]):
+            sampled_parameters = self.D['paramsLatinGrid']
+        else:
+            sampled_parameters = self.D['paramsGrid']
+
+        for param_set in tqdm(sampled_parameters): 
             print(param_set)
             self.set_parameters(param_set)
             X  = np.zeros((self.D['n_trajs'], self.D['n_steps'], self.D['state_space_dim']))
@@ -170,10 +193,9 @@ class Generator(object):
                 
                 # READ SIMULATED RESULTS
                 datapoint = pd.read_csv(filepath_or_buffer= self.stoch_mod.output_dir / Path(self.D['model'] + "_species_timeseries1.txt"), delim_whitespace=True, header=1)
-                datapoint = datapoint.drop(labels="Reaction", axis=1).drop(labels='Fired', axis=1).to_numpy()#.drop("N",axis = 1).to_numpy()
-
+                datapoint_cut = datapoint.drop(labels="Reaction", axis=1).drop(labels='Fired', axis=1).to_numpy()#.drop("N",axis = 1).to_numpy()
                 # PERFORM TRACES STANDARDIZATION THROUGH RESAMPLING
-                new_point = self.time_resampling(datapoint)
+                new_point = self.time_resampling(datapoint_cut)
                 new_point = new_point[1:, 1:]
                 X[count,:,:] = new_point
                 
@@ -189,9 +211,11 @@ class Generator(object):
             
             # GLOBAL COUNTER
             extern_counter += 1
-            
+         
         self.results   = np.copy(traces)
         self.etiquette = np.copy(meta)
+
+        self.traj_dict = {"X": self.results, "Y": self.etiquette} 
                     
             
     def save_dataset_values(self):
