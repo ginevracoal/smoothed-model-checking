@@ -3,7 +3,7 @@
 
 - `Datasets/` contains the code to generate training and validation sets
     - `Models/` contains the specs of the CRN model and the config setting for the experiments
-    - `Data_Generation/` generates CRN trajectories
+    - `Data_Generation/` generates dataset of pairs `(pameter, labels)` by generating CRN trajectories with respective STL boolean label. `labels` is a vector of length M of 0s and 1s, where M is the number of samples per parameter value.
     - `Data_Validation/` labels CRN trajectories wrt a STL requirement
     - `Data/WorkingDatasets` contains datasets and visualization plots
 - `BNNs/` implements the Bayesian Neural Network model
@@ -20,3 +20,9 @@ Install virtual environment:
 python -m venv venv
 pip install -r requirements.txt
 ```
+
+## Runnin
+
+In `run_data_generation.py` set `model_name` and `latin_flag` (to use a latin hypercube sampling strategy) and the run:
+
+`python run_data_generation.py`
