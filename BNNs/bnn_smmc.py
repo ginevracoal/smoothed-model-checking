@@ -66,14 +66,10 @@ class BNN_smMC(PyroModule):
         self.T_train = np.sum(P_train,axis=1)
         xmax = np.max(self.X_train, axis = 0)
         xmin = np.min(self.X_train, axis = 0)
-        #tmax = np.max(np.max(self.T_train, axis = 0), axis = 0)
-        #tmin = np.min(np.min(self.T_train, axis = 0), axis = 0)
         self.MAX = xmax
         self.MIN = xmin
 
         self.X_train_scaled = -1+2*(self.X_train-self.MIN)/(self.MAX-self.MIN)
-        #self.T_train_scaled = -1+2*(self.T_train-self.MIN[1])/(self.MAX[1]-self.MIN[1])
-        #self.X_train_scaled = self.X_train
         self.T_train_scaled = np.expand_dims(self.T_train, axis=1)
 
        
@@ -91,7 +87,6 @@ class BNN_smMC(PyroModule):
         self.n_val_points = n_val_points
         self.T_val = np.sum(P_val,axis=1)
         
-        #self.X_val_scaled = self.X_val
         self.X_val_scaled = -1+2*(self.X_val-self.MIN)/(self.MAX-self.MIN)
         
         self.T_val_scaled = self.T_val
@@ -114,10 +109,8 @@ class BNN_smMC(PyroModule):
     
 
         # samples are conditionally independent w.r.t. the observed data
-        #with pyro.plate("data", len(x_data)):
-
         lhat = lifted_module(x_data) # out.shape = (batch_size, num_classes)
-        #lhat = F.sigmoid(lifted_module(x_data)) # out.shape = (batch_size, num_classes)
+        
         pyro.sample("obs", Binomial(total_count=self.M_train, probs=lhat), obs=y_data)
 
     def guide(self, x_data, y_data=None):
@@ -138,10 +131,9 @@ class BNN_smMC(PyroModule):
         # define a random module from the dictionary of distributions
         lifted_module = pyro.random_module("module", self.det_network, dists)()
 
-        #with pyro.plate("data", len(x_data)):
             
-            #************************************* PERPLESSITA' QUI *************************************
-            # compute predictions on `x_data`
+        #************************************* PERPLESSITA' QUI *************************************
+        # compute predictions on `x_data`
         lhat = lifted_module(x_data)
             
         return lhat
@@ -173,8 +165,7 @@ class BNN_smMC(PyroModule):
 
         self.n_epochs = n_epochs
         self.lr = lr
-        #self.net = NN(self.input_size,self.n_hidden,self.output_size)
-
+        
 
     def train(self):
 
