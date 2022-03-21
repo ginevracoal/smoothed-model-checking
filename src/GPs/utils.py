@@ -1,6 +1,9 @@
 import torch
 import numpy as np 
 
+def Poisson_satisfaction_function(lam):
+    lam = lam.clone().detach()
+    return torch.exp(-lam)*(1+lam+(lam**2)/2+(lam**3)/6)
 
 def build_bernoulli_dataframe(data):
     params = torch.tensor(data['params'], dtype=torch.float32)
