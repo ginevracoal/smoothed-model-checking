@@ -25,12 +25,14 @@ from itertools import combinations
 
 from pyro.nn import PyroModule
 from DNN import DeterministicNetwork
+import matplotlib
+matplotlib.rcParams.update({'font.size': 22})
 
 softplus = torch.nn.Softplus()
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, casestudy_id, train_set, val_set, input_size, n_hidden = 10):
+    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, n_hidden = 10):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
@@ -45,7 +47,10 @@ class BNN_smMC(PyroModule):
         self.output_size = 1
         self.n_test_preds = 500
         self.n_test_points = 120
-        self.casestudy_id = casestudy_id
+        self.model_name = model_name
+        self.param_name = list_param_names
+        self.mre_eps = 0.000001
+        self.casestudy_id = self.model_name+''.join(self.param_name)
 
     def load_train_data(self):
         with open(self.train_set_fn, 'rb') as handle:
@@ -61,11 +66,17 @@ class BNN_smMC(PyroModule):
         self.T_train = np.sum(P_train,axis=1)
         xmax = np.max(self.X_train, axis = 0)
         xmin = np.min(self.X_train, axis = 0)
+        #tmax = np.max(np.max(self.T_train, axis = 0), axis = 0)
+        #tmin = np.min(np.min(self.T_train, axis = 0), axis = 0)
         self.MAX = xmax
         self.MIN = xmin
 
         self.X_train_scaled = -1+2*(self.X_train-self.MIN)/(self.MAX-self.MIN)
+        #self.T_train_scaled = -1+2*(self.T_train-self.MIN[1])/(self.MAX[1]-self.MIN[1])
+        #self.X_train_scaled = self.X_train
         self.T_train_scaled = np.expand_dims(self.T_train, axis=1)
+
+       
 
     def load_val_data(self):
         with open(self.val_set_fn, 'rb') as handle:
@@ -79,7 +90,8 @@ class BNN_smMC(PyroModule):
         self.M_val = M_val
         self.n_val_points = n_val_points
         self.T_val = np.sum(P_val,axis=1)
-
+        
+        #self.X_val_scaled = self.X_val
         self.X_val_scaled = -1+2*(self.X_val-self.MIN)/(self.MAX-self.MIN)
         
         self.T_val_scaled = self.T_val
@@ -105,8 +117,9 @@ class BNN_smMC(PyroModule):
         #with pyro.plate("data", len(x_data)):
 
         lhat = lifted_module(x_data) # out.shape = (batch_size, num_classes)
+        #lhat = F.sigmoid(lifted_module(x_data)) # out.shape = (batch_size, num_classes)
         pyro.sample("obs", Binomial(total_count=self.M_train, probs=lhat), obs=y_data)
-         
+
     def guide(self, x_data, y_data=None):
 
         dists = {}
@@ -140,7 +153,7 @@ class BNN_smMC(PyroModule):
         If `avg_prediction` is True, it returns the average prediction on 
         `inputs`, otherwise it returns all predictions 
         """
-        
+
         preds = []
         # take multiple samples
         for _ in range(self.n_test_preds):         
@@ -160,7 +173,8 @@ class BNN_smMC(PyroModule):
 
         self.n_epochs = n_epochs
         self.lr = lr
- 
+        #self.net = NN(self.input_size,self.n_hidden,self.output_size)
+
 
     def train(self):
 
@@ -185,14 +199,25 @@ class BNN_smMC(PyroModule):
 
         self.loss_history = loss_history
 
+        
+        if self.n_epochs >= 50:
+            fig = plt.figure()
+            plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
+            plt.title("loss")
+            plt.xlabel("epochs")
+            plt.tight_layout()
+            plt.savefig(self.results_path+"loss.png")
+            plt.close()
 
-    def evaluate(self, iter_id = None, fld_id = None):
+
+    def evaluate(self):
 
         # it prints the histogram comparison and returns the wasserstein distance over the test set
 
-        #X_val_t = torch.FloatTensor(self.X_val_scaled)
-
+        
         with torch.no_grad():
+
+            x_val_t = torch.FloatTensor(self.X_val_scaled)
 
             x_test_t = []
             x_test_unscaled_t = []
@@ -202,49 +227,116 @@ class BNN_smMC(PyroModule):
                 x_test_t.append(torch.linspace(single_param_values.min(), single_param_values.max(), self.n_test_points))
                 x_test_unscaled_t.append(torch.linspace(single_param_values_unscaled.min(), single_param_values_unscaled.max(), self.n_test_points))
             x_test_t = torch.stack(x_test_t, dim=1)
+            if self.input_size == 2:
+                x_test_cart_t = torch.cartesian_prod(x_test_t[:,0],x_test_t[:,1])
+            if self.input_size == 3:
+                x_test_cart_t = torch.cartesian_prod(x_test_t[:,0],x_test_t[:,1],x_test_t[:,2])
             x_test = x_test_t.numpy()
+
             x_test_unscaled = torch.stack(x_test_unscaled_t, dim=1).numpy()
             
-            T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_t)
+            if self.input_size == 1:
+                T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_t)
+            else: #input_size > 1
+                T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_cart_t)
+
+            T_val_bnn, val_mean_pred, val_std_pred = self.forward(x_val_t)
         
-        #MSE = np.mean((self.T_val_scaled-val_mean_pred)**2)
-        MSE = 0
+            
+        val_satisf = self.T_val_scaled/self.M_val
+        val_dist = np.abs(val_satisf-val_mean_pred.flatten())
+        n_val_errors = 0
+        for i in range(self.n_val_points):
+            if val_dist[i] > 1.96*val_std_pred[i,0]:
+                n_val_errors += 1
 
-        plot_path = "BNN_Plots_"+self.casestudy_id
+        PercErr = 100*(n_val_errors/self.n_val_points)
 
-        if iter_id:
-            BNN_PP = plot_path+"/1L_Arch_{}/".format(fld_id)
-        else:
-            BNN_PP = plot_path+"/1L_Arch_{}/".format(fld_id)
-        os.makedirs(BNN_PP, exist_ok=True)
+        MSE = np.mean(val_dist**2)
+        MRE = np.mean(val_dist/(val_satisf.flatten()+self.mre_eps))
 
-        self.results_path = BNN_PP
-    
-
-        fig = plt.figure()
-        plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
-        plt.title("loss")
-        plt.savefig(BNN_PP+"loss.png")
+        UncVolume = 2*1.96*test_std_pred.flatten()
+        AvgUncVolume = np.mean(UncVolume)
 
 
         if self.input_size == 1:
             fig = plt.figure()
-            if self.casestudy_id == "PoissonLambda":
+            if self.model_name == "Poisson":
                 poiss_satisf_fnc = lambda x: np.exp(-x)*(1+x+x**2/2+x**3/6)
                 plt.plot(x_test, poiss_satisf_fnc(x_test_unscaled), 'b', label="valid")
             else: 
                 plt.plot(self.X_val_scaled.flatten(), self.T_val_scaled/self.M_val, 'b', label="valid")
             plt.plot(x_test.flatten(), test_mean_pred, 'r', label="bnn")
-            plt.fill_between(x_test.flatten(), test_mean_pred.flatten()-1.96*test_std_pred.flatten(), test_mean_pred.flatten()+1.96*test_std_pred.flatten(), color='r', alpha = 0.1)#/np.sqrt(self.n_test_preds)
+            LB = test_mean_pred.flatten()-1.96*test_std_pred.flatten()
+            plt.fill_between(x_test.flatten(), [max(lb,0) for lb in LB], test_mean_pred.flatten()+1.96*test_std_pred.flatten(), color='r', alpha = 0.1)#/np.sqrt(self.n_test_preds)
             plt.scatter(self.X_train_scaled.flatten(), self.T_train_scaled.flatten()/self.M_train, marker='+', color='g', label="train")
             plt.legend()
+            plt.xlabel(self.param_name[0])
+            plt.title(self.model_name)
+            plt.tight_layout()
             
-            
-            figname = BNN_PP+"satisf_fnc_comparison.png"
+            figname = self.results_path+"satisf_fnc_comparison.png"
             plt.savefig(figname)
             plt.close()
 
-        return MSE
+            fig = plt.figure()
+            plt.plot(x_test_unscaled, UncVolume)
+            plt.xlabel(self.param_name[0])
+            plt.ylabel("uncertainty")
+            plt.title(self.model_name)
+            figname = self.results_path+"uncertainty_volume.png"
+            plt.tight_layout()
+            plt.savefig(figname)
+            plt.close()
+
+            fig = plt.figure()
+            plt.plot(self.X_val.flatten(), val_dist)
+            plt.xlabel(self.param_name[0])
+            plt.ylabel("absolute error")
+            plt.title(self.model_name)
+            figname = self.results_path+"absolute_error.png"
+            plt.tight_layout()
+            plt.savefig(figname)
+            plt.close()
+
+        elif self.input_size == 2:
+
+
+            fig = plt.figure()
+            h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(test_mean_pred, (self.n_test_points, self.n_test_points)))
+            plt.colorbar()
+            plt.xlabel(self.param_name[1])
+            plt.ylabel(self.param_name[0])
+            plt.title(self.model_name)
+            plt.tight_layout()
+            
+            figname = self.results_path+"satisf_fnc_comparison.png"
+            plt.savefig(figname)
+            plt.close()
+            
+            fig = plt.figure()
+            h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(UncVolume, (self.n_test_points, self.n_test_points)))
+            plt.colorbar()
+            plt.xlabel(self.param_name[1])
+            plt.ylabel(self.param_name[0])
+            plt.title(self.model_name+"uncertainty")
+            plt.tight_layout()
+            
+            figname = self.results_path+"uncertainty.png"
+            plt.savefig(figname)
+            plt.close()
+
+            fig = plt.figure()
+            h = plt.contourf(np.reshape(val_dist, (self.n_val_points, self.n_val_points)))
+            plt.xlabel(self.param_name[1])
+            plt.ylabel(self.param_name[0])
+            plt.tight_layout()
+            plt.colorbar()
+            figname = self.results_path+"absolute_error.png"
+            plt.close()
+
+
+        return MSE, MRE, PercErr, AvgUncVolume
 
 
 
@@ -258,7 +350,16 @@ class BNN_smMC(PyroModule):
         param_store.save(self.results_path+net_name)
 
 
-    def run(self, n_epochs = 100, lr = 0.01):
+    def load(self, net_name = "bnn_net.pt"):
+        path = self.results_path+net_name
+        param_store = pyro.get_param_store()
+        param_store.load(path)
+        for key, value in param_store.items():
+            param_store.replace_param(key, value, value)
+        print("\nLoading ", path)
+
+
+    def run(self, n_epochs = 100, lr = 0.01, identifier = 0, train_flag = True):
 
         print("Loading data...")
         self.load_train_data()
@@ -266,13 +367,27 @@ class BNN_smMC(PyroModule):
 
         self.set_training_options(n_epochs, lr)
 
-        fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr,time.time())
-        print("Training...")
-        self.train()
-        
-        print("Evaluating...")
-        mse = self.evaluate(fld_id = fld_id)
-        print("Mean squared error: ", mse)
+        fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr, identifier)
+        plot_path = "BNN_Plots_"+self.casestudy_id
 
-        print("Saving...")
-        self.save()
+        self.results_path = plot_path+"/2L_Arch_{}/".format(fld_id)
+        os.makedirs(self.results_path, exist_ok=True)
+
+        if train_flag:
+            print("Training...")
+            self.train()
+            print("Saving...")
+            self.save()
+        else:
+            self.load()
+
+        print("Evaluating...")
+        mse, mre, pe, unc = self.evaluate()
+        print("Mean squared error: ", round(mse,6))
+        print("Mean relative error: ", round(mre,6))
+        print("Percentage of uncovered values of satisf: ", round(pe,2), "%")
+        print("Average uncertainty volume: ", unc)
+        
+
+
+#todo: usare GPU

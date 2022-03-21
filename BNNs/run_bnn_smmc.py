@@ -1,32 +1,27 @@
+from data_utils import *
 from bnn_smmc import *
 
-model_name = "Poisson"
-nb_param = 1
-param_name = "Lambda"
+model_name = "PhosRelay"
+nb_param = 3
 
+list_param_names = ["k1","k2","k3"]
+param_name = ''.join(list_param_names)
+print(param_name)
 casestudy_name = model_name+param_name
 
+df_file_train, df_file_val = get_data_path(model_name, param_name, nb_param)
 
-
-if model_name == "Poisson":
-	nb_obs_train = 10
-	nb_config_train = 46	
-	nb_obs_val = nb_obs_train
-	nb_config_val = nb_config_train
-else:
-	nb_obs_train = 10
-	nb_config_train = 200
-	nb_obs_val = 5000
-	nb_config_val = 20
-
-prefix = "../Data/WorkingDatasets/"+model_name+"/"
-df_file_val = prefix+model_name+"_DS_{}samples_{}obs_{}.pickle".format(nb_config_val, nb_obs_val, param_name)
-df_file_train = prefix+model_name+"_DS_{}samples_{}obs_{}.pickle".format(nb_config_train, nb_obs_train, param_name)
+TRAIN_FLAG = True
 
 n_hidden = 10
-bnn = BNN_smMC(casestudy_name, df_file_train, df_file_val, nb_param, n_hidden)
+bnn = BNN_smMC(model_name, list_param_names, df_file_train, df_file_val, nb_param, n_hidden)
 
 n_epochs = 10000
-bnn.run(n_epochs = n_epochs, lr = 0.01)
+lr = 0.01
+identifier = 1
+bnn.run(n_epochs, lr, identifier, train_flag = TRAIN_FLAG)
 
-print(model_name, param_name, n_epochs, lr)
+print("TrainFlag = ", TRAIN_FLAG)
+print("Train set: ", df_file_train)
+print("Validation set: ", df_file_val)
+print("model_name = {}, param_name = {}, n_hidden = {}, n_epochs = {}, lr = {}, identifier = {}".format(model_name, param_name, n_hidden, n_epochs, lr, identifier))
