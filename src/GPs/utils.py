@@ -43,3 +43,8 @@ def build_binomial_dataframe(data):
 
     return params, success_counts, n_params, n_trials
 
+def execution_time(start, end):
+    hours, rem = divmod(end - start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print("\nExecution time = {:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds)))
+
