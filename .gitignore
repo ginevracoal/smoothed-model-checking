@@ -4,7 +4,7 @@
 *screenlog.0
 
 venv/
-Data/
+data/
 
-GPs/plots/
-GPs/models/
+*plots/
+*models/

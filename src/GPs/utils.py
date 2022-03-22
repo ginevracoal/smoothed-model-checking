@@ -1,6 +1,14 @@
 import torch
 import numpy as np 
 
+
+def normalize_columns(x, a=-1, b=1):
+    """ Normalize columns of x in [a,b] range """
+    min_x = torch.min(x, axis=0, keepdim=True)[0]
+    max_x = torch.max(x, axis=0, keepdim=True)[0]
+    normalized_x = 2*(x-min_x)/(max_x-min_x)-1
+    return normalized_x
+
 def Poisson_satisfaction_function(lam):
     lam = lam.clone().detach()
     return torch.exp(-lam)*(1+lam+(lam**2)/2+(lam**3)/6)
@@ -16,9 +24,7 @@ def build_bernoulli_dataframe(data):
     print("labels shape =", labels.shape)
 
     n_params = data['params'].shape[1]
-
     return params, labels, n_params
-
 
 def build_binomial_dataframe(data):
     params = torch.tensor(data['params'], dtype=torch.float32)
@@ -34,7 +40,6 @@ def build_binomial_dataframe(data):
     print("labels shape =", labels.shape)
     print("n. trials =", n_trials)
     print("Params True label counts shape =", success_counts.shape)
-  
 
     return params, success_counts, n_params, n_trials
 
