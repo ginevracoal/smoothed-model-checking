@@ -1,12 +1,12 @@
+import sys
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-
-import numpy as np
-from sklearn.datasets import make_moons
+import matplotlib.pyplot as plt
 from sklearn import preprocessing
 
-import matplotlib.pyplot as plt
+
 
 import scipy.io
 import pyro
@@ -15,19 +15,21 @@ from pyro.optim import Adam, SGD
 import torch.nn.functional as F
 from pyro.distributions import Normal, Binomial
 from math import pi
-import pickle
-import time
+import pickle5 as pickle
 import os
-from pyro import poutine
-
-from torch.autograd import Variable
-from itertools import combinations
-
-from pyro.nn import PyroModule
-from DNN import DeterministicNetwork
+import time
 import matplotlib
-matplotlib.rcParams.update({'font.size': 22})
+from pyro import poutine
+from pyro.nn import PyroModule
+from itertools import combinations
+from torch.autograd import Variable
 
+sys.path.append('../')
+from paths import *
+
+from BNNs.dnn import DeterministicNetwork
+
+matplotlib.rcParams.update({'font.size': 22})
 softplus = torch.nn.Softplus()
 
 class BNN_smMC(PyroModule):
@@ -72,8 +74,6 @@ class BNN_smMC(PyroModule):
         self.X_train_scaled = -1+2*(self.X_train-self.MIN)/(self.MAX-self.MIN)
         self.T_train_scaled = np.expand_dims(self.T_train, axis=1)
 
-       
-
     def load_val_data(self):
         with open(self.val_set_fn, 'rb') as handle:
             datasets_dict = pickle.load(handle)
@@ -107,7 +107,6 @@ class BNN_smMC(PyroModule):
         # samples a new nn.Module (`lifted_module`)
         lifted_module = pyro.random_module("module", self.det_network, priors)()
     
-
         # samples are conditionally independent w.r.t. the observed data
         lhat = lifted_module(x_data) # out.shape = (batch_size, num_classes)
         
@@ -131,11 +130,9 @@ class BNN_smMC(PyroModule):
         # define a random module from the dictionary of distributions
         lifted_module = pyro.random_module("module", self.det_network, dists)()
 
-            
         #************************************* PERPLESSITA' QUI *************************************
         # compute predictions on `x_data`
         lhat = lifted_module(x_data)
-            
         return lhat
 
     
@@ -158,14 +155,10 @@ class BNN_smMC(PyroModule):
         
         return preds, t_mean, t_std
     
-        
-
-
     def set_training_options(self, n_epochs = 1000, lr = 0.01):
 
         self.n_epochs = n_epochs
-        self.lr = lr
-        
+        self.lr = lr        
 
     def train(self):
 
@@ -190,7 +183,6 @@ class BNN_smMC(PyroModule):
 
         self.loss_history = loss_history
 
-        
         if self.n_epochs >= 50:
             fig = plt.figure()
             plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
@@ -200,12 +192,9 @@ class BNN_smMC(PyroModule):
             plt.savefig(self.results_path+"loss.png")
             plt.close()
 
-
     def evaluate(self):
 
-        # it prints the histogram comparison and returns the wasserstein distance over the test set
-
-        
+        # it plots the histogram comparison and returns the wasserstein distance over the test set
         with torch.no_grad():
 
             x_val_t = torch.FloatTensor(self.X_val_scaled)
@@ -233,7 +222,6 @@ class BNN_smMC(PyroModule):
 
             T_val_bnn, val_mean_pred, val_std_pred = self.forward(x_val_t)
         
-            
         val_satisf = self.T_val_scaled/self.M_val
         val_dist = np.abs(val_satisf-val_mean_pred.flatten())
         n_val_errors = 0
@@ -248,7 +236,6 @@ class BNN_smMC(PyroModule):
 
         UncVolume = 2*1.96*test_std_pred.flatten()
         AvgUncVolume = np.mean(UncVolume)
-
 
         if self.input_size == 1:
             fig = plt.figure()
@@ -292,7 +279,6 @@ class BNN_smMC(PyroModule):
 
         elif self.input_size == 2:
 
-
             fig = plt.figure()
             h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(test_mean_pred, (self.n_test_points, self.n_test_points)))
             plt.colorbar()
@@ -326,20 +312,13 @@ class BNN_smMC(PyroModule):
             figname = self.results_path+"absolute_error.png"
             plt.close()
 
-
         return MSE, MRE, PercErr, AvgUncVolume
-
-
-
-
-
 
     def save(self, net_name = "bnn_net.pt"):
 
         param_store = pyro.get_param_store()
         print(f"\nlearned params = {param_store}")
         param_store.save(self.results_path+net_name)
-
 
     def load(self, net_name = "bnn_net.pt"):
         path = self.results_path+net_name
@@ -348,7 +327,6 @@ class BNN_smMC(PyroModule):
         for key, value in param_store.items():
             param_store.replace_param(key, value, value)
         print("\nLoading ", path)
-
 
     def run(self, n_epochs = 100, lr = 0.01, identifier = 0, train_flag = True):
 

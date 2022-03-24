@@ -14,7 +14,6 @@ from bernoulli_likelihood import BernoulliLikelihood
 from binomial_likelihood import BinomialLikelihood
 from utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
 
-data_path = '../../data/'
 sys.path.append('../')
 from paths import *
 
@@ -81,12 +80,16 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         evaluate_GP(model=model, likelihood=likelihood, n_test_points=args.n_test_points,
             n_posterior_samples=args.n_posterior_samples, n_params=n_params)  
 
-        x_test, post_mean, post_std = evaluate_GP(model=model, likelihood=likelihood, 
-            n_posterior_samples=args.n_posterior_samples, n_params=n_params, n_test_points=args.n_test_points)  
+        if n_params<=2:
 
-        fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
-            n_trials_train=n_trials_train, x_test=x_test, post_mean=post_mean, post_std=post_std, 
-            params_list=params_list)
+            x_test, post_mean, post_std = evaluate_GP(model=model, likelihood=likelihood, 
+                n_posterior_samples=args.n_posterior_samples, n_params=n_params, n_test_points=args.n_test_points)  
+
+            fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
+                n_trials_train=n_trials_train, x_test=x_test, post_mean=post_mean, post_std=post_std, 
+                params_list=params_list)
+            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+            fig.savefig(plots_path+f"{out_filename}.png")
 
     else: 
         with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
@@ -96,14 +99,15 @@ for filepath, train_filename, val_filename, params_list in data_paths:
 
         evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val, 
             n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params) 
+        
+        if n_params<=2:
 
-        x_test, post_mean, post_std = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val,
-            n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params, 
-            n_test_points=args.n_test_points)  
+            x_test, post_mean, post_std = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val,
+                n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params, 
+                n_test_points=args.n_test_points)  
 
-        fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
-            n_trials_train=n_trials_train, x_test=x_test, post_mean=post_mean, post_std=post_std, 
-            params_list=params_list, x_val=x_val, y_val=y_val, n_trials_val=n_trials_val)
-
-    os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-    fig.savefig(plots_path+f"{out_filename}.png")
+            fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
+                n_trials_train=n_trials_train, x_test=x_test, post_mean=post_mean, post_std=post_std, 
+                params_list=params_list, x_val=x_val, y_val=y_val, n_trials_val=n_trials_val)
+            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+            fig.savefig(plots_path+f"{out_filename}.png")

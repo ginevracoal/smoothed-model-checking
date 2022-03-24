@@ -1,3 +1,4 @@
+import sys
 import time
 import torch
 import gpytorch
@@ -10,7 +11,9 @@ from gpytorch.functions import log_normal_cdf
 from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
 from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
 
-from utils import execution_time, Poisson_satisfaction_function, normalize_columns
+sys.path.append('../')
+
+from GPs.utils import execution_time, Poisson_satisfaction_function, normalize_columns
 
 
 class GPmodel(ApproximateGP):
