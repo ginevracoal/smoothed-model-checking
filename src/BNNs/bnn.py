@@ -189,7 +189,7 @@ class BNN_smMC(PyroModule):
             plt.title("loss")
             plt.xlabel("epochs")
             plt.tight_layout()
-            plt.savefig(self.results_path+"loss.png")
+            plt.savefig(self.plot_path+"loss.png")
             plt.close()
 
     def evaluate(self):
@@ -253,7 +253,7 @@ class BNN_smMC(PyroModule):
             plt.title(self.model_name)
             plt.tight_layout()
             
-            figname = self.results_path+"satisf_fnc_comparison.png"
+            figname = self.plot_path+"satisf_fnc_comparison.png"
             plt.savefig(figname)
             plt.close()
 
@@ -262,7 +262,7 @@ class BNN_smMC(PyroModule):
             plt.xlabel(self.param_name[0])
             plt.ylabel("uncertainty")
             plt.title(self.model_name)
-            figname = self.results_path+"uncertainty_volume.png"
+            figname = self.plot_path+"uncertainty_volume.png"
             plt.tight_layout()
             plt.savefig(figname)
             plt.close()
@@ -272,7 +272,7 @@ class BNN_smMC(PyroModule):
             plt.xlabel(self.param_name[0])
             plt.ylabel("absolute error")
             plt.title(self.model_name)
-            figname = self.results_path+"absolute_error.png"
+            figname = self.plot_path+"absolute_error.png"
             plt.tight_layout()
             plt.savefig(figname)
             plt.close()
@@ -287,7 +287,7 @@ class BNN_smMC(PyroModule):
             plt.title(self.model_name)
             plt.tight_layout()
             
-            figname = self.results_path+"satisf_fnc_comparison.png"
+            figname = self.plot_path+"satisf_fnc_comparison.png"
             plt.savefig(figname)
             plt.close()
             
@@ -299,7 +299,7 @@ class BNN_smMC(PyroModule):
             plt.title(self.model_name+"uncertainty")
             plt.tight_layout()
             
-            figname = self.results_path+"uncertainty.png"
+            figname = self.plot_path+"uncertainty.png"
             plt.savefig(figname)
             plt.close()
 
@@ -309,7 +309,7 @@ class BNN_smMC(PyroModule):
             plt.ylabel(self.param_name[0])
             plt.tight_layout()
             plt.colorbar()
-            figname = self.results_path+"absolute_error.png"
+            figname = self.plot_path+"absolute_error.png"
             plt.close()
 
         return MSE, MRE, PercErr, AvgUncVolume
@@ -318,10 +318,10 @@ class BNN_smMC(PyroModule):
 
         param_store = pyro.get_param_store()
         print(f"\nlearned params = {param_store}")
-        param_store.save(self.results_path+net_name)
+        param_store.save(self.model_path+net_name)
 
     def load(self, net_name = "bnn_net.pt"):
-        path = self.results_path+net_name
+        path = self.model_path+"_"+net_name
         param_store = pyro.get_param_store()
         param_store.load(path)
         for key, value in param_store.items():
@@ -337,10 +337,11 @@ class BNN_smMC(PyroModule):
         self.set_training_options(n_epochs, lr)
 
         fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr, identifier)
-        plot_path = "BNN_Plots_"+self.casestudy_id
+        self.plot_path = f"plots/BNN_Plots_{self.casestudy_id}_2L_Arch_{fld_id}/"
+        self.model_path = f"models/BNN_{self.casestudy_id}_2L_Arch_{fld_id}_"
 
-        self.results_path = plot_path+"/2L_Arch_{}/".format(fld_id)
-        os.makedirs(self.results_path, exist_ok=True)
+        os.makedirs(self.plot_path, exist_ok=True)
+        os.makedirs("models", exist_ok=True)
 
         if train_flag:
             print("Training...")
