@@ -6,7 +6,9 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 
-
+import random
+import torch
+import numpy as np
 
 import scipy.io
 import pyro
@@ -25,9 +27,8 @@ from itertools import combinations
 from torch.autograd import Variable
 
 sys.path.append('../')
-from paths import *
-
 from BNNs.dnn import DeterministicNetwork
+from paths import models_path, plots_path
 
 matplotlib.rcParams.update({'font.size': 22})
 softplus = torch.nn.Softplus()
@@ -130,7 +131,6 @@ class BNN_smMC(PyroModule):
         # define a random module from the dictionary of distributions
         lifted_module = pyro.random_module("module", self.det_network, dists)()
 
-        #************************************* PERPLESSITA' QUI *************************************
         # compute predictions on `x_data`
         lhat = lifted_module(x_data)
         return lhat
@@ -161,6 +161,9 @@ class BNN_smMC(PyroModule):
         self.lr = lr        
 
     def train(self):
+        random.seed(0)
+        np.random.seed(0)
+        torch.manual_seed(0)
 
         #adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
         adam_params = {"lr": self.lr}
@@ -193,6 +196,9 @@ class BNN_smMC(PyroModule):
             plt.close()
 
     def evaluate(self):
+        random.seed(0)
+        np.random.seed(0)
+        torch.manual_seed(0)
 
         # it plots the histogram comparison and returns the wasserstein distance over the test set
         with torch.no_grad():
@@ -328,7 +334,7 @@ class BNN_smMC(PyroModule):
             param_store.replace_param(key, value, value)
         print("\nLoading ", path)
 
-    def run(self, n_epochs = 100, lr = 0.01, identifier = 0, train_flag = True):
+    def run(self, n_epochs, lr, identifier=0, train_flag=True):
 
         print("Loading data...")
         self.load_train_data()
@@ -337,11 +343,11 @@ class BNN_smMC(PyroModule):
         self.set_training_options(n_epochs, lr)
 
         fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr, identifier)
-        self.plot_path = f"plots/BNN_Plots_{self.casestudy_id}_2L_Arch_{fld_id}/"
-        self.model_path = f"models/BNN_{self.casestudy_id}_2L_Arch_{fld_id}_"
+        self.plot_path = f"{plots_path}/BNN_Plots_{self.casestudy_id}_2L_Arch_{fld_id}/"
+        self.model_path = f"{models_path}/BNN_{self.casestudy_id}_2L_Arch_{fld_id}_"
 
         os.makedirs(self.plot_path, exist_ok=True)
-        os.makedirs("models", exist_ok=True)
+        os.makedirs(models_path, exist_ok=True)
 
         if train_flag:
             print("Training...")
@@ -357,7 +363,5 @@ class BNN_smMC(PyroModule):
         print("Mean relative error: ", round(mre,6))
         print("Percentage of uncovered values of satisf: ", round(pe,2), "%")
         print("Average uncertainty volume: ", unc)
-        
-
 
 #todo: usare GPU
