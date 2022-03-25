@@ -2,19 +2,16 @@ import os
 import sys
 import json
 import copy
-import random
-import numpy as np
-
 import torch
-torch.set_default_dtype(torch.float32)
-from torch import nn
-import torch.nn.functional as nnf
-softplus = torch.nn.Softplus()
-import torch.optim as torchopt
-
-
-
+import random
 import warnings
+import numpy as np
+from torch import nn
+import torch.optim as torchopt
+import torch.nn.functional as nnf
+
+softplus = torch.nn.Softplus()
+torch.set_default_dtype(torch.float32)
 warnings.filterwarnings('ignore')
 
 

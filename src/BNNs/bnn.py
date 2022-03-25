@@ -1,41 +1,35 @@
-import sys
-import torch
-import numpy as np
-import torch.nn as nn
-import torch.optim as optim
-import matplotlib.pyplot as plt
-from sklearn import preprocessing
-
-import random
-import torch
-import numpy as np
-
-import scipy.io
-import pyro
-from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
-from pyro.optim import Adam, SGD
-import torch.nn.functional as F
-from pyro.distributions import Normal, Binomial
-from math import pi
-import pickle5 as pickle
 import os
+import sys
 import time
+import pyro
+import torch
+import random
+import scipy.io
 import matplotlib
+import numpy as np
+from math import pi
+import torch.nn as nn
 from pyro import poutine
+import pickle5 as pickle
+import torch.optim as optim
 from pyro.nn import PyroModule
+import matplotlib.pyplot as plt
+import torch.nn.functional as F
+from pyro.optim import Adam, SGD
+from sklearn import preprocessing
 from itertools import combinations
 from torch.autograd import Variable
-
-sys.path.append('../')
-from BNNs.dnn import DeterministicNetwork
+from dnn import DeterministicNetwork
 from paths import models_path, plots_path
+from pyro.distributions import Normal, Binomial
+from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
 
 matplotlib.rcParams.update({'font.size': 22})
 softplus = torch.nn.Softplus()
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, n_hidden = 10):
+    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, n_hidden=10):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
@@ -310,7 +304,8 @@ class BNN_smMC(PyroModule):
             plt.close()
 
             fig = plt.figure()
-            h = plt.contourf(np.reshape(val_dist, (self.n_val_points, self.n_val_points)))
+            sqrt_val_shape = int(np.sqrt(self.n_val_points))
+            h = plt.contourf(np.reshape(val_dist, (sqrt_val_shape, sqrt_val_shape)))
             plt.xlabel(self.param_name[1])
             plt.ylabel(self.param_name[0])
             plt.tight_layout()
@@ -343,11 +338,11 @@ class BNN_smMC(PyroModule):
         self.set_training_options(n_epochs, lr)
 
         fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr, identifier)
-        self.plot_path = f"{plots_path}/BNN_Plots_{self.casestudy_id}_2L_Arch_{fld_id}/"
-        self.model_path = f"{models_path}/BNN_{self.casestudy_id}_2L_Arch_{fld_id}_"
+        self.plot_path = f"BNNs/{plots_path}/BNN_Plots_{self.casestudy_id}_2L_Arch_{fld_id}/"
+        self.model_path = f"BNNs/{models_path}/BNN_{self.casestudy_id}_2L_Arch_{fld_id}_"
 
         os.makedirs(self.plot_path, exist_ok=True)
-        os.makedirs(models_path, exist_ok=True)
+        os.makedirs(f"BNNs/{models_path}", exist_ok=True)
 
         if train_flag:
             print("Training...")

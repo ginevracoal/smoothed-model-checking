@@ -21,8 +21,17 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-## Runnin
+## Experiments
 
-In `run_data_generation.py` set `model_name` and `latin_flag` (to use a latin hypercube sampling strategy) and the run:
+Activate the environment
+```
+source venv/bin/activate
+```
 
-`python run_data_generation.py`
+In `Datasets/Data_Generation/run_data_generation.py` set `model_name` and `latin_flag` (to use a latin hypercube sampling strategy) and the run: `python run_data_generation.py`
+
+Train models
+```
+python BNNs/train_bnn.py
+python GPs/train_gp.py
+```

@@ -9,13 +9,13 @@ from math import sqrt
 import pickle5 as pickle
 import matplotlib.pyplot as plt
 
-from variational_GP import GPmodel, train_GP, evaluate_GP, plot_GP_posterior
-from bernoulli_likelihood import BernoulliLikelihood
-from binomial_likelihood import BinomialLikelihood
-from utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
-
-sys.path.append('../')
+sys.path.append(".")
 from paths import *
+from GPs.variational_GP import GPmodel, train_GP, evaluate_GP, plot_GP_posterior
+from GPs.bernoulli_likelihood import BernoulliLikelihood
+from GPs.binomial_likelihood import BinomialLikelihood
+from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
+
 
 random.seed(0)
 np.random.seed(0)
@@ -32,6 +32,8 @@ parser.add_argument("--n_test_points", default=30, type=int, help="Number of tes
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
+plots_path = os.path.join("GPs", plots_path)
+models_path = os.path.join("GPs", models_path)
 
 for filepath, train_filename, val_filename, params_list in data_paths:
 

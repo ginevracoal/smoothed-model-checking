@@ -1,7 +1,9 @@
 import sys
 import time
 import torch
+import random
 import gpytorch
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from itertools import product
@@ -11,9 +13,7 @@ from gpytorch.functions import log_normal_cdf
 from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
 from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
 
-sys.path.append('../')
-
-from GPs.utils import execution_time, Poisson_satisfaction_function, normalize_columns
+from utils import execution_time, Poisson_satisfaction_function, normalize_columns
 
 
 class GPmodel(ApproximateGP):
@@ -48,6 +48,9 @@ class GPmodel(ApproximateGP):
 
 
 def train_GP(model, likelihood, x_train, y_train, n_trials_train, n_epochs, lr):
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
 
     model.train()
     likelihood.train()
@@ -75,7 +78,10 @@ def train_GP(model, likelihood, x_train, y_train, n_trials_train, n_epochs, lr):
 
 def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_val=None, n_trials_val=None,
     n_test_points=None, z=1.96):
-    
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
+        
     model.eval()    
     likelihood.eval()
 
