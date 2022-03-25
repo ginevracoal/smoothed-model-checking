@@ -13,6 +13,14 @@ def Poisson_satisfaction_function(lam):
     lam = lam.clone().detach()
     return torch.exp(-lam)*(1+lam+(lam**2)/2+(lam**3)/6)
 
+def Poisson_observations(n_points, n_params=1):
+    x_val = []
+    for col_idx in range(n_params):
+        x_val.append(torch.linspace(0.1, 5, n_points))
+    x_val = torch.stack(x_val, dim=1)
+    y_val = Poisson_satisfaction_function(x_val)
+    return x_val, y_val
+
 def build_bernoulli_dataframe(data):
     params = torch.tensor(data['params'], dtype=torch.float32)
     params_observations = data['labels'].shape[1]

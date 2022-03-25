@@ -3,6 +3,7 @@ import time
 import torch
 import random
 import gpytorch
+import itertools
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -13,7 +14,7 @@ from gpytorch.functions import log_normal_cdf
 from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
 from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
 
-from utils import execution_time, Poisson_satisfaction_function, normalize_columns
+from utils import execution_time, normalize_columns, Poisson_satisfaction_function, Poisson_observations
 
 
 class GPmodel(ApproximateGP):
@@ -46,7 +47,6 @@ class GPmodel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
 
-
 def train_GP(model, likelihood, x_train, y_train, n_trials_train, n_epochs, lr):
     random.seed(0)
     np.random.seed(0)
@@ -76,8 +76,21 @@ def train_GP(model, likelihood, x_train, y_train, n_trials_train, n_epochs, lr):
     print("\nModel params:", model.state_dict().keys())
     return model
 
-def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_val=None, n_trials_val=None,
-    n_test_points=None, z=1.96):
+def posterior_predictive(model, x, n_posterior_samples):
+    normalized_x = normalize_columns(x) 
+    posterior = model(normalized_x)
+    post_samples = posterior.sample(sample_shape=torch.Size((n_posterior_samples,)))
+
+    post_samples = [[torch.exp(log_normal_cdf(post_samples[j, i]))  for i in range(len(x))] \
+        for j in range(n_posterior_samples)]
+    post_samples = torch.tensor(post_samples)
+
+    post_mean = torch.mean(post_samples, dim=0).flatten()
+    post_std = torch.std(post_samples, dim=0).flatten()
+    return post_mean, post_std
+
+def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_val=None, n_trials_val=None, z=1.96):
+
     random.seed(0)
     np.random.seed(0)
     torch.manual_seed(0)
@@ -87,70 +100,41 @@ def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_
 
     with torch.no_grad():
 
-        if x_val is None:
+        if x_val is None: # Poisson case-study
 
-            x_test = []
-            for col_idx in range(n_params):
-                x_test.append(torch.linspace(0.1, 5, n_test_points))
-            x_test = torch.stack(x_test, dim=1)
-
-            x_val = x_test
-            y_val = Poisson_satisfaction_function(x_test)
-            n_trials_val = 1
-            n_test_points_samples = n_test_points
+            n_val_points = 100
+            x_val, y_val = Poisson_observations(n_val_points)
+            n_trials_val=1 
 
         else:
+            n_val_points = len(x_val)
 
-            if n_test_points is None:
+        post_mean, post_std = posterior_predictive(model=model, x=x_val, n_posterior_samples=n_posterior_samples)
 
-                n_test_points = len(x_val)
-                x_test = x_val
-                n_test_points_samples = n_test_points
+        val_satisfaction_prob = y_val.flatten()/n_trials_val
+        assert val_satisfaction_prob.min()>=0
+        assert val_satisfaction_prob.max()<=1
 
-            else:
-                x_test = []
-                for col_idx in range(n_params):
-                    single_param_values = x_val[:,col_idx]
-                    x_test.append(torch.linspace(single_param_values.min(), single_param_values.max(), n_test_points))
-                x_test = torch.stack(x_test, dim=1)
-                n_test_points_samples = n_test_points**n_params
+        val_dist = torch.abs(val_satisfaction_prob-post_mean)
+        # print("\nval_satisfaction_prob.shape", val_satisfaction_prob.shape)
+        # print("val_dist", val_dist)
+        # print("val_satisfaction_prob", val_satisfaction_prob)
 
-                if n_params==2:
-                    x_test = torch.tensor(list(product(x_test[:,0], x_test[:,1])))
-        
-        normalized_x_test = normalize_columns(x_test) 
-        posterior = model(normalized_x_test)
-        post_samples = posterior.sample(sample_shape=torch.Size((n_posterior_samples,)))
-        post_samples = [[torch.exp(log_normal_cdf(post_samples[j, i])) for i in range(n_test_points_samples)] \
-            for j in range(n_posterior_samples)]
-        post_samples = torch.tensor(post_samples)
+        n_val_errors = torch.sum(val_dist > z*post_std)
+        percentage_val_errors = 100*(n_val_errors/n_val_points)
 
-        post_mean = torch.mean(post_samples, dim=0).flatten()
-        post_std = torch.std(post_samples, dim=0).flatten()
+        mse = torch.mean(val_dist**2)
+        mre = torch.mean(val_dist/val_satisfaction_prob+0.000001)
 
-        if len(x_val)==len(x_test):
+        uncovered_ci_area = 2*z*post_std
+        avg_uncovered_ci_area = torch.mean(uncovered_ci_area)
 
-            val_satisfaction_prob = y_val.flatten()/n_trials_val
-            val_dist = torch.abs(val_satisfaction_prob-post_mean)
-            # print("\nval_satisfaction_prob.shape", val_satisfaction_prob.shape)
-            # print("val_dist", val_dist)
-            # print("val_satisfaction_prob", val_satisfaction_prob)
+        print(f"\nPercentage of validation errors = {percentage_val_errors}")
+        print(f"MSE = {mse}")
+        print(f"MRE = {mre}")
+        print(f"avg_uncovered_ci_area = {avg_uncovered_ci_area}")
 
-            n_val_errors = torch.sum(val_dist > z*post_std)
-            percentage_val_errors = 100*(n_val_errors/n_test_points)
-
-            mse = torch.mean(val_dist**2)
-            mre = torch.mean(val_dist/val_satisfaction_prob+0.000001)
-
-            UncVolume = 2*z*post_std
-            AvgUncVolume = torch.mean(UncVolume)
-
-            print(f"\nPercentage of validation errors = {percentage_val_errors}")
-            print(f"MSE = {mse}")
-            print(f"MRE = {mre}")
-            print(f"AvgUncVolume = {AvgUncVolume}")
-
-    return x_test, post_mean, post_std
+    return x_val, post_mean, post_std, percentage_val_errors, mse, mre, avg_uncovered_ci_area
 
 
 def plot_GP_posterior(x_train_binomial, y_train_binomial, n_trials_train, x_test, post_mean, post_std, 
@@ -181,28 +165,37 @@ def plot_GP_posterior(x_train_binomial, y_train_binomial, n_trials_train, x_test
 
     elif n_params==2:
 
-        p1, p2 = params_list
+        params_couples_idxs = list(itertools.combinations(range(len(params_list)), 2))
 
-        fig, ax = plt.subplots(1, 2, figsize=(12, 5))
+        fig, ax = plt.subplots(len(params_couples_idxs), 2, figsize=(9, 4*len(params_couples_idxs)))
 
-        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
-        data = data.pivot(p1, p2, "val_counts")
-        sns.heatmap(data, ax=ax[0], label='validation pts')
-        ax[0].set_xlabel("validation set")
+        for row_idx, (i, j) in enumerate(params_couples_idxs):
 
-        # data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_mean':posterior.mean})
-        data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
+            p1, p2 = params_list[i], params_list[j]
 
-        data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
-        data = data.pivot(p1, p2, "posterior_preds")
-        data.sort_index(level=0, ascending=True, inplace=True)
+            axis = ax[row_idx,0] if len(params_couples_idxs)>1 else ax[0]
+            data = pd.DataFrame({p1:x_val[:,i],p2:x_val[:,j],'val_counts':y_val.flatten()/n_trials_val})
+            data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
+            data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
+            data.sort_index(level=0, ascending=True, inplace=True)
 
-        sns.heatmap(data, ax=ax[1], label='posterior preds')
-        ax[1].set_xlabel("posterior preds")
+            # data = data.sort_values(by=[p1, p2], axis=0, ascending=True)
+            data = data.pivot(p1, p2, "val_counts")
+            sns.heatmap(data, ax=axis, label='validation pts')
+            axis.set_title("validation set")
+
+            axis = ax[row_idx,1] if len(params_couples_idxs)>1 else ax[1]
+
+            data = pd.DataFrame({p1:x_test[:,i],p2:x_test[:,j],'posterior_preds':post_mean})
+            data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
+            data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
+            # data = data.sort_values(by=[p1, p2], axis=0, ascending=True)
+            data.sort_index(level=0, ascending=True, inplace=True)
+            data = data.pivot(p1, p2, "posterior_preds")
+            sns.heatmap(data, ax=axis, label='posterior preds')
+            axis.set_title("posterior preds")
 
     plt.tight_layout()
     plt.close()
     return fig
+
