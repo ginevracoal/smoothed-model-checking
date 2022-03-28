@@ -28,8 +28,8 @@ def build_bernoulli_dataframe(data):
     params = np.repeat(params, params_observations, axis=0)
     labels = torch.tensor(data['labels'], dtype=torch.int64).flatten()
     
-    print("\nparams shape =", params.shape)
-    print("labels shape =", labels.shape)
+    # print("\nparams shape =", params.shape)
+    # print("labels shape =", labels.shape)
 
     n_params = data['params'].shape[1]
     return params, labels, n_params
@@ -44,10 +44,10 @@ def build_binomial_dataframe(data):
     success_counts = [len(row[row==1.]) for row in labels]
     success_counts = torch.tensor(success_counts, dtype=torch.float32)
 
-    print("\nparams shape =", params.shape)
-    print("labels shape =", labels.shape)
-    print("n. trials =", n_trials)
-    print("Params True label counts shape =", success_counts.shape)
+    # print("\nparams shape =", params.shape)
+    # print("labels shape =", labels.shape)
+    # print("n. trials =", n_trials)
+    # print("Params True label counts shape =", success_counts.shape)
 
     return params, success_counts, n_params, n_trials
 

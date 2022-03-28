@@ -14,7 +14,8 @@ from gpytorch.functions import log_normal_cdf
 from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
 from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
 
-from utils import execution_time, normalize_columns, Poisson_satisfaction_function, Poisson_observations
+sys.path.append(".")
+from GPs.utils import execution_time, normalize_columns, Poisson_satisfaction_function, Poisson_observations
 
 
 class GPmodel(ApproximateGP):
@@ -129,10 +130,10 @@ def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_
         avg_uncovered_ci_area = torch.mean(uncovered_ci_area)
 
         print(f"\nEvaluation time = {evaluation_time}")
-        print(f"\nPercentage of validation errors = {percentage_val_errors}")
-        print(f"MSE = {mse}")
-        print(f"MRE = {mre}")
-        print(f"avg_uncovered_ci_area = {avg_uncovered_ci_area}")
+        print(f"\nMean squared error: {mse}")
+        print(f"Mean relative error: {mre}")
+        print(f"Percentage of validation errors: {percentage_val_errors} %")
+        print(f"Average uncertainty area:  {avg_uncovered_ci_area}\n")
 
     evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
                        "avg_uncovered_ci_area":avg_uncovered_ci_area, "evaluation_time":evaluation_time}

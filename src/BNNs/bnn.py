@@ -19,10 +19,12 @@ from pyro.optim import Adam, SGD
 from sklearn import preprocessing
 from itertools import combinations
 from torch.autograd import Variable
-from dnn import DeterministicNetwork
 from paths import models_path, plots_path
 from pyro.distributions import Normal, Binomial
 from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
+
+sys.path.append(".")
+from BNNs.dnn import DeterministicNetwork
 
 matplotlib.rcParams.update({'font.size': 22})
 softplus = torch.nn.Softplus()
@@ -327,7 +329,7 @@ class BNN_smMC(PyroModule):
             figname = self.plot_path+"absolute_error.png"
             plt.close()
 
-        return MSE, MRE, PercErr, AvgUncVolume, evaluation_time
+        return x_test, test_mean_pred, test_std_pred, MSE, MRE, PercErr, AvgUncVolume, evaluation_time
 
     def save(self, net_name = "bnn_net.pt"):
 
@@ -375,11 +377,16 @@ class BNN_smMC(PyroModule):
 
 
         print("Evaluating...")
-        mse, mre, pe, unc, evaluation_time = self.evaluate()
+        x_test, post_mean, post_std, mse, mre, percentage_val_errors, avg_uncovered_ci_area, evaluation_time = self.evaluate()
         print("\nEvaluation time: ", evaluation_time)
-        print("Mean squared error: ", round(mse,6))
+        print("\nMean squared error: ", round(mse,6))
         print("Mean relative error: ", round(mre,6))
-        print("Percentage of uncovered values of satisf: ", round(pe,2), "%")
-        print("Average uncertainty volume: ", unc)
+        print("Percentage of validation errors: ", round(percentage_val_errors,2), "%")
+        print("Average uncertainty area: ", avg_uncovered_ci_area, "\n")
+
+        evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
+                           "avg_uncovered_ci_area":avg_uncovered_ci_area, "evaluation_time":evaluation_time}
+
+        return x_test, post_mean, post_std, evaluation_dict
 
 #todo: usare GPU
