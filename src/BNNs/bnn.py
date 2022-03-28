@@ -207,17 +207,16 @@ class BNN_smMC(PyroModule):
                 x_test_t.append(torch.linspace(single_param_values.min(), single_param_values.max(), self.n_test_points))
                 x_test_unscaled_t.append(torch.linspace(single_param_values_unscaled.min(), single_param_values_unscaled.max(), self.n_test_points))
             x_test_t = torch.stack(x_test_t, dim=1)
-            if self.input_size == 2:
-                x_test_cart_t = torch.cartesian_prod(x_test_t[:,0],x_test_t[:,1])
-            if self.input_size == 3:
-                x_test_cart_t = torch.cartesian_prod(x_test_t[:,0],x_test_t[:,1],x_test_t[:,2])
-            x_test = x_test_t.numpy()
 
+            if self.input_size>1:
+                x_test_cart_t = torch.cartesian_prod(*[x_test_t[:,i] for i in range(x_test_t.shape[1])])
+
+            x_test = x_test_t.numpy()
             x_test_unscaled = torch.stack(x_test_unscaled_t, dim=1).numpy()
             
             if self.input_size == 1:
                 T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_t)
-            else: #input_size > 1
+            else: 
                 T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_cart_t)
 
             T_val_bnn, val_mean_pred, val_std_pred = self.forward(x_val_t)
@@ -339,7 +338,7 @@ class BNN_smMC(PyroModule):
 
         fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr, identifier)
         self.plot_path = f"BNNs/{plots_path}/BNN_Plots_{self.casestudy_id}_2L_Arch_{fld_id}/"
-        self.model_path = f"BNNs/{models_path}/BNN_{self.casestudy_id}_2L_Arch_{fld_id}_"
+        self.model_path = os.path.join("BNNs",models_path,f"BNN_{self.casestudy_id}_2L_Arch_{fld_id}")
 
         os.makedirs(self.plot_path, exist_ok=True)
         os.makedirs(f"BNNs/{models_path}", exist_ok=True)
