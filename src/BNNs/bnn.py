@@ -388,11 +388,6 @@ class BNN_smMC(PyroModule):
         evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
                            "avg_uncovered_ci_area":avg_uncovered_ci_area, "evaluation_time":evaluation_time}
 
-        # if self.model_name == "Poisson":
-        #     return x_test_unscaled, post_mean, post_std, evaluation_dict
-
-        # else:
-        #     return x_test, post_mean, post_std, evaluation_dict
         return x_test_unscaled, post_mean, post_std, evaluation_dict
 
 #todo: usare GPU
