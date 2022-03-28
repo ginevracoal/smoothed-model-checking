@@ -13,8 +13,8 @@ data_paths = [
     ["PhosRelay", "PhosRelay_DS_200samples_10obs_k1", "PhosRelay_DS_12samples_1000obs_k1", ["k1"]],
     ["PhosRelay", "PhosRelay_DS_1000_latin_samples_10obs_k1k2k3", "PhosRelay_DS_216_latin_samples_500obs_k1k2k3",
         ["k1","k2","k3"]],
-    ["PhosRelay", "PhosRelay_DS_100000_latin_samples_10obs_k0k1k2k3k4", 
-        "PhosRelay_DS_1024_latin_samples_500obs_k0k1k2k3k4", ["k0","k1","k2","k3","k4"]],
+    # ["PhosRelay", "PhosRelay_DS_100000_latin_samples_10obs_k0k1k2k3k4", 
+    #     "PhosRelay_DS_1024_latin_samples_500obs_k0k1k2k3k4", ["k0","k1","k2","k3","k4"]],
 ]
 
 models_path = 'models/'

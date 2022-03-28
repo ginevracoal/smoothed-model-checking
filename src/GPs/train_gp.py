@@ -32,8 +32,10 @@ parser.add_argument("--n_test_points", default=10, type=int, help="Number of tes
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
-plots_path = os.path.join("GPs", plots_path)
 models_path = os.path.join("GPs", models_path)
+plots_path = os.path.join("GPs", plots_path)
+os.makedirs(os.path.dirname(models_path), exist_ok=True)
+os.makedirs(os.path.dirname(plots_path), exist_ok=True)
 
 for filepath, train_filename, val_filename, params_list in data_paths:
 
@@ -68,22 +70,30 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         state_dict = torch.load(os.path.join(models_path, "gp_state_"+out_filename+".pth"))
         model.load_state_dict(state_dict)
 
+        file = open(os.path.join(models_path,f"gp_{out_filename}_training_time.txt"),"r+")
+        print(f"\nTraining time = {file.read()}")
+
     else:
 
-        model = train_GP(model=model, likelihood=likelihood, x_train=normalized_x_train, 
+        model, training_time = train_GP(model=model, likelihood=likelihood, x_train=normalized_x_train, 
             y_train=y_train, n_trials_train=n_trials_train, n_epochs=args.n_epochs, lr=args.lr)
-        os.makedirs(os.path.dirname(models_path), exist_ok=True)
         torch.save(model.state_dict(), os.path.join(models_path, "gp_state_"+out_filename+".pth"))
+
+        file = open(os.path.join(models_path,f"gp_{out_filename}_training_time.txt"),"w")
+        file.writelines(training_time)
+        file.close()
 
     print(f"\n=== Validation {val_filename} ===")
 
     if filepath=='Poisson':
 
-        x_val, post_mean, post_std = evaluate_GP(model=model, likelihood=likelihood,
-            n_posterior_samples=args.n_posterior_samples, n_params=n_params)[:3]
+        x_val, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood,
+            n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
         fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
             n_trials_train=n_trials_train, x_test=x_val, post_mean=post_mean, post_std=post_std, params_list=params_list)
+        os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+        fig.savefig(plots_path+f"{out_filename}.png")
 
     else: 
 
@@ -92,12 +102,13 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
-        x_val, post_mean, post_std = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val, 
-            n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)[:3]
+        x_val, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val, 
+            n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
-        fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
-            n_trials_train=n_trials_train, x_test=x_val, post_mean=post_mean, post_std=post_std, 
-            params_list=params_list, x_val=x_val, y_val=y_val, n_trials_val=n_trials_val)
+        if n_params<=2:
+            fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
+                n_trials_train=n_trials_train, x_test=x_val, post_mean=post_mean, post_std=post_std, 
+                params_list=params_list, x_val=x_val, y_val=y_val, n_trials_val=n_trials_val)
 
-    os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-    fig.savefig(plots_path+f"{out_filename}.png")
+            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+            fig.savefig(plots_path+f"{out_filename}.png")

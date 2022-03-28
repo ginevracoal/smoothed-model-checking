@@ -27,6 +27,13 @@ from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
 matplotlib.rcParams.update({'font.size': 22})
 softplus = torch.nn.Softplus()
 
+def execution_time(start, end):
+    hours, rem = divmod(end - start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    time = f"{int(hours):0>2}:{int(minutes):0>2}:{int(seconds):0>2}"
+    return time
+
+
 class BNN_smMC(PyroModule):
 
     def __init__(self, model_name, list_param_names, train_set, val_set, input_size, n_hidden=10):
@@ -169,7 +176,7 @@ class BNN_smMC(PyroModule):
         batch_T_t = torch.FloatTensor(self.T_train_scaled)
         batch_X_t = torch.FloatTensor(self.X_train_scaled)
 
-        start_time = time.time()
+        start = time.time()
 
         loss_history = []
         for j in range(self.n_epochs):
@@ -189,10 +196,16 @@ class BNN_smMC(PyroModule):
             plt.savefig(self.plot_path+"loss.png")
             plt.close()
 
+        training_time = execution_time(start=start, end=time.time())
+        print("\nTraining time: ", training_time)
+        return training_time
+
     def evaluate(self):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
+
+        start = time.time()
 
         # it plots the histogram comparison and returns the wasserstein distance over the test set
         with torch.no_grad():
@@ -221,6 +234,8 @@ class BNN_smMC(PyroModule):
 
             T_val_bnn, val_mean_pred, val_std_pred = self.forward(x_val_t)
         
+        evaluation_time = execution_time(start=start, end=time.time())
+
         val_satisf = self.T_val_scaled/self.M_val
         val_dist = np.abs(val_satisf-val_mean_pred.flatten())
         n_val_errors = 0
@@ -312,7 +327,7 @@ class BNN_smMC(PyroModule):
             figname = self.plot_path+"absolute_error.png"
             plt.close()
 
-        return MSE, MRE, PercErr, AvgUncVolume
+        return MSE, MRE, PercErr, AvgUncVolume, evaluation_time
 
     def save(self, net_name = "bnn_net.pt"):
 
@@ -345,14 +360,23 @@ class BNN_smMC(PyroModule):
 
         if train_flag:
             print("Training...")
-            self.train()
+            training_time = self.train()
             print("Saving...")
             self.save()
+
+            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_2L_Arch_{fld_id}"),"w")
+            file.writelines(training_time)
+            file.close()
+
         else:
             self.load()
+            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_2L_Arch_{fld_id}"),"r+")
+            print(f"\nTraining time = {file.read()}")
+
 
         print("Evaluating...")
-        mse, mre, pe, unc = self.evaluate()
+        mse, mre, pe, unc, evaluation_time = self.evaluate()
+        print("\nEvaluation time: ", evaluation_time)
         print("Mean squared error: ", round(mse,6))
         print("Mean relative error: ", round(mre,6))
         print("Percentage of uncovered values of satisf: ", round(pe,2), "%")

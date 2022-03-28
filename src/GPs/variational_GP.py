@@ -71,10 +71,11 @@ def train_GP(model, likelihood, x_train, y_train, n_trials_train, n_epochs, lr):
         if i % 10 == 0:
             print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
 
-    execution_time(start=start, end=time.time())
+    training_time = execution_time(start=start, end=time.time())
+    print("\nTraining time =", training_time)
 
     print("\nModel params:", model.state_dict().keys())
-    return model
+    return model, training_time
 
 def posterior_predictive(model, x, n_posterior_samples):
     normalized_x = normalize_columns(x) 
@@ -109,17 +110,15 @@ def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_
         else:
             n_val_points = len(x_val)
 
+        start = time.time()
         post_mean, post_std = posterior_predictive(model=model, x=x_val, n_posterior_samples=n_posterior_samples)
+        evaluation_time = execution_time(start=start, end=time.time())
 
         val_satisfaction_prob = y_val.flatten()/n_trials_val
         assert val_satisfaction_prob.min()>=0
         assert val_satisfaction_prob.max()<=1
 
         val_dist = torch.abs(val_satisfaction_prob-post_mean)
-        # print("\nval_satisfaction_prob.shape", val_satisfaction_prob.shape)
-        # print("val_dist", val_dist)
-        # print("val_satisfaction_prob", val_satisfaction_prob)
-
         n_val_errors = torch.sum(val_dist > z*post_std)
         percentage_val_errors = 100*(n_val_errors/n_val_points)
 
@@ -129,13 +128,16 @@ def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_
         uncovered_ci_area = 2*z*post_std
         avg_uncovered_ci_area = torch.mean(uncovered_ci_area)
 
+        print(f"\nEvaluation time = {evaluation_time}")
         print(f"\nPercentage of validation errors = {percentage_val_errors}")
         print(f"MSE = {mse}")
         print(f"MRE = {mre}")
         print(f"avg_uncovered_ci_area = {avg_uncovered_ci_area}")
 
-    return x_val, post_mean, post_std, percentage_val_errors, mse, mre, avg_uncovered_ci_area
+    evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
+                       "avg_uncovered_ci_area":avg_uncovered_ci_area, "evaluation_time":evaluation_time}
 
+    return x_val, post_mean, post_std, evaluation_dict
 
 def plot_GP_posterior(x_train_binomial, y_train_binomial, n_trials_train, x_test, post_mean, post_std, 
     params_list, x_val=None, y_val=None, n_trials_val=None, z=1.96):
