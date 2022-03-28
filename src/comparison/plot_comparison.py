@@ -43,11 +43,11 @@ z=1.96
 for filepath, train_filename, val_filename, params_list in data_paths:
 
     sns.set_style("darkgrid")
-    matplotlib.rc('font', **{'size': 10, 'weight' : 'bold'})
-
-    print("\n=== Loading GP model ===")
+    matplotlib.rc('font', **{'size':10, 'weight' : 'bold'})
 
     out_filename = f"{args.gp_likelihood}_{train_filename}_epochs={args.gp_n_epochs}_lr={args.gp_lr}"
+
+    print(f"\n=== Loading GP model {out_filename} ===")
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         data = pickle.load(handle)
@@ -102,6 +102,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
                 label='training points', marker='.', color='black',  legend=None)
             ax[0].set_xlabel(params_list[0])
             ax[0].set_ylabel('Satisfaction probability')
+            ax[0].set_title('GP')
 
         else:
             sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[0], label='validation pts', legend=None)
@@ -111,6 +112,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
             ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
             ax[0].set_xlabel(params_list[0])
             ax[0].set_ylabel('Satisfaction probability')
+            ax[0].set_title('GP')
 
     elif n_params==2:
 
@@ -132,7 +134,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         data.sort_index(level=0, ascending=True, inplace=True)
         data = data.pivot(p1, p2, "posterior_preds")
         sns.heatmap(data, ax=ax[1], label='GP posterior preds')
-        ax[1].set_title("GP posterior preds")
+        ax[1].set_title("GP")
 
     print("\n=== Loading BNN model ===")
 
@@ -161,6 +163,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
             sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[1], 
                 label='training points', marker='.', color='black')
             ax[1].set_xlabel(params_list[0])
+            ax[1].set_title('BNN')
 
         else: 
             sns.scatterplot(x=bnn_smmc.X_val.flatten(), y=bnn_smmc.T_val.flatten()/bnn_smmc.M_val, 
@@ -170,6 +173,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
             sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='posterior')
             ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
             ax[1].set_xlabel(params_list[0])
+            ax[1].set_title('BNN')
 
     elif n_params==2:
 
@@ -186,7 +190,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         data.sort_index(level=0, ascending=True, inplace=True)
         data = data.pivot(p1, p2, "posterior_preds")
         sns.heatmap(data, ax=ax[2])
-        ax[2].set_title("BNN posterior preds")
+        ax[2].set_title("BNN")
 
         ax[2].set_xlabel(params_list[0])
         ax[2].set_ylabel(params_list[1])
