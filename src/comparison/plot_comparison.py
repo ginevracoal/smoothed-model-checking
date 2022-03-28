@@ -38,11 +38,13 @@ args = parser.parse_args()
 
 
 z=1.96
+palette = sns.color_palette("magma_r", 3)
 
 
 for filepath, train_filename, val_filename, params_list in data_paths:
 
     sns.set_style("darkgrid")
+    sns.set_palette(palette)
     matplotlib.rc('font', **{'size':10, 'weight' : 'bold'})
 
     out_filename = f"{args.gp_likelihood}_{train_filename}_epochs={args.gp_n_epochs}_lr={args.gp_lr}"
@@ -93,23 +95,24 @@ for filepath, train_filename, val_filename, params_list in data_paths:
 
         if filepath=='Poisson':
 
-            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='posterior', legend=None)
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='posterior', legend=None, palette=palette)
             ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
 
             sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[0], 
-                label='true satisfaction',  legend=None)
+                label='true satisfaction',  legend=None, palette=palette)
             sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
-                label='training points', marker='.', color='black',  legend=None)
+                label='training points', marker='.', color='black',  legend=None, palette=palette)
             ax[0].set_xlabel(params_list[0])
             ax[0].set_ylabel('Satisfaction probability')
             ax[0].set_title('GP')
 
         else:
-            sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[0], label='validation pts', legend=None)
             sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
-                label='training points', marker='.', color='black',  legend=None)
-            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='posterior',  legend=None)
+                label='training points', marker='.', color='black',  legend=None, palette=palette)
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='posterior',  legend=None, palette=palette)
             ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+            sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[0], label='validation pts', 
+                legend=None, palette=palette)
             ax[0].set_xlabel(params_list[0])
             ax[0].set_ylabel('Satisfaction probability')
             ax[0].set_title('GP')
@@ -155,23 +158,23 @@ for filepath, train_filename, val_filename, params_list in data_paths:
 
         if bnn_smmc.model_name == "Poisson":
 
-            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='posterior')
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='posterior', palette=palette)
             ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
 
             sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[1], 
-                label='true satisfaction')
+                label='true satisfaction', palette=palette)
             sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[1], 
-                label='training points', marker='.', color='black')
+                label='training points', marker='.', color='black', palette=palette)
             ax[1].set_xlabel(params_list[0])
             ax[1].set_title('BNN')
 
         else: 
-            sns.scatterplot(x=bnn_smmc.X_val.flatten(), y=bnn_smmc.T_val.flatten()/bnn_smmc.M_val, 
-                ax=ax[1], label='validation pts')
             sns.scatterplot(x=bnn_smmc.X_train.flatten(), y=bnn_smmc.T_train.flatten()/bnn_smmc.M_train, ax=ax[1], 
-                label='training points', marker='.', color='black')
-            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='posterior')
+                label='training points', marker='.', color='black', palette=palette)
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='posterior', palette=palette)
             ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+            sns.scatterplot(x=bnn_smmc.X_val.flatten(), y=bnn_smmc.T_val.flatten()/bnn_smmc.M_val, 
+                ax=ax[1], label='validation pts', palette=palette)
             ax[1].set_xlabel(params_list[0])
             ax[1].set_title('BNN')
 

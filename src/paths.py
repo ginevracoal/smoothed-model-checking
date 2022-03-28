@@ -1,9 +1,9 @@
 # filepath, train_filename, val_filename, params_list
 
 data_paths = [
-    ["Poisson", "Poisson_DS_46samples_1obs_lambda", None, ["lambda"]], 
-    ["Poisson", "Poisson_DS_46samples_5obs_lambda", None, ["lambda"]],
-    ["Poisson", "Poisson_DS_46samples_10obs_lambda", None, ["lambda"]],
+    # ["Poisson", "Poisson_DS_46samples_1obs_lambda", None, ["lambda"]], 
+    # ["Poisson", "Poisson_DS_46samples_5obs_lambda", None, ["lambda"]],
+    # ["Poisson", "Poisson_DS_46samples_10obs_lambda", None, ["lambda"]],
     ["SIR", "SIR_DS_200samples_10obs_beta", "SIR_DS_20samples_5000obs_beta", ["beta"]],
     ["SIR", "SIR_DS_200samples_10obs_gamma", "SIR_DS_20samples_5000obs_gamma", ["gamma"]],
     ["SIR", "SIR_DS_256samples_10obs_betagamma", "SIR_DS_256samples_5000obs_betagamma", ["beta", "gamma"]],
