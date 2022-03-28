@@ -5,14 +5,17 @@ import torch
 import random
 import argparse
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import pickle5 as pickle
+import matplotlib.pyplot as plt
 
 sys.path.append(".")
 from paths import *
 from BNNs.bnn import BNN_smMC
 from GPs.variational_GP import GPmodel, evaluate_GP
 from GPs.binomial_likelihood import BinomialLikelihood
-from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
+from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns, Poisson_satisfaction_function
 
 random.seed(0)
 np.random.seed(0)
@@ -32,23 +35,10 @@ parser.add_argument("--gp_n_posterior_samples", default=10, type=int, help="Numb
 args = parser.parse_args()
 
 
-os.makedirs(os.path.join("comparison", plots_path), exist_ok=True)
-
+z=1.96
 
 
 for filepath, train_filename, val_filename, params_list in data_paths:
-
-    print("\n=== Loading BNN model ===")
-
-    df_file_train = os.path.join(os.path.join(data_path, filepath, train_filename+".pickle"))
-    df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
-
-    bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
-        input_size=len(params_list), n_hidden=args.bnn_n_hidden)
-
-    x_test, post_mean, post_std, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
-        identifier=args.bnn_identifier, train_flag=False)
-    pyro.clear_param_store()
 
     print("\n=== Loading GP model ===")
 
@@ -91,6 +81,111 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         x_test, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val, 
             n_trials_val=n_trials_val, n_posterior_samples=args.gp_n_posterior_samples, n_params=n_params)
 
-    ########
-    # plot #
-    ########
+
+    if n_params==1:
+
+        fig, ax = plt.subplots(1, 2, figsize=(8, 4))
+
+        if filepath=='Poisson':
+
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='posterior')
+            ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+
+            sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[0], 
+                label='true satisfaction')
+            sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
+                label='training points', marker='.', color='black')
+
+        else:
+            sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[0], label='validation pts')
+            sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
+                label='training points', marker='.', color='black')
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='posterior')
+            ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+
+    elif n_params==2:
+
+        fig, ax = plt.subplots(1, 3, figsize=(12, 4))
+
+        p1, p2 = params_list[0], params_list[1]
+
+        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
+        data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
+        data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
+        data.sort_index(level=0, ascending=True, inplace=True)
+        data = data.pivot(p1, p2, "val_counts")
+        sns.heatmap(data, ax=ax[0], label='validation pts')
+        ax[0].set_title("validation set")
+
+        data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
+        data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
+        data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
+        data.sort_index(level=0, ascending=True, inplace=True)
+        data = data.pivot(p1, p2, "posterior_preds")
+        sns.heatmap(data, ax=ax[1], label='GP posterior preds')
+        ax[1].set_title("GP posterior preds")
+
+    print("\n=== Loading BNN model ===")
+
+    df_file_train = os.path.join(os.path.join(data_path, filepath, train_filename+".pickle"))
+    df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
+
+    pyro.clear_param_store()
+    bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
+        input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=len(x_val))
+
+    x_test, post_mean, post_std, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
+        identifier=args.bnn_identifier, train_flag=False)
+
+    if n_params==1:
+
+        post_mean, post_std = post_mean.flatten(), post_std.flatten()
+
+        if bnn_smmc.model_name == "Poisson":
+
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='posterior')
+            ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+
+            sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[1], 
+                label='true satisfaction')
+            sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[1], 
+                label='training points', marker='.', color='black')
+
+        else: 
+            sns.scatterplot(x=bnn_smmc.X_val.flatten(), y=bnn_smmc.T_val.flatten()/bnn_smmc.M_val, 
+                ax=ax[1], label='validation pts')
+            sns.scatterplot(x=bnn_smmc.X_train.flatten(), y=bnn_smmc.T_train.flatten()/bnn_smmc.M_train, ax=ax[1], 
+                label='training points', marker='.', color='black')
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='posterior')
+            ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+
+    elif n_params==2:
+
+        # post_mean = np.reshape(post_mean, (bnn_smmc.n_test_points, bnn_smmc.n_test_points))
+
+        x_test = []
+        for col_idx in range(n_params):
+            single_param_values = x_val[:,col_idx]
+            x_test.append(torch.linspace(single_param_values.min(), single_param_values.max(), bnn_smmc.n_test_points))
+        x_test = torch.stack(x_test, dim=1)
+        # n_test_points_samples = n_test_points**n_params
+
+        from itertools import product
+        x_test = np.array(list(product(x_test[:,0], x_test[:,1])))
+
+        print(x_test.shape, post_mean.shape)
+
+        data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean.flatten()})
+        data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
+        data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
+        data.sort_index(level=0, ascending=True, inplace=True)
+        data = data.pivot(p1, p2, "posterior_preds")
+        sns.heatmap(data, ax=ax[2], label='BNN posterior preds')
+        ax[2].set_title("BNN posterior preds")
+
+
+    if fig:
+        plt.tight_layout()
+        plt.close()
+        os.makedirs(os.path.join("comparison", plots_path), exist_ok=True)
+        fig.savefig(os.path.join("comparison", plots_path, f"{out_filename}.png"))

@@ -38,7 +38,7 @@ def execution_time(start, end):
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, n_hidden=10):
+    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, n_hidden=10, n_test_points=20):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
@@ -52,7 +52,7 @@ class BNN_smMC(PyroModule):
         self.n_hidden = n_hidden
         self.output_size = 1
         self.n_test_preds = 500
-        self.n_test_points = 120
+        self.n_test_points = n_test_points
         self.model_name = model_name
         self.param_name = list_param_names
         self.mre_eps = 0.000001
@@ -329,7 +329,7 @@ class BNN_smMC(PyroModule):
             figname = self.plot_path+"absolute_error.png"
             plt.close()
 
-        return x_test, test_mean_pred, test_std_pred, MSE, MRE, PercErr, AvgUncVolume, evaluation_time
+        return x_test, x_test_unscaled, test_mean_pred, test_std_pred, MSE, MRE, PercErr, AvgUncVolume, evaluation_time
 
     def save(self, net_name = "bnn_net.pt"):
 
@@ -377,7 +377,8 @@ class BNN_smMC(PyroModule):
 
 
         print("Evaluating...")
-        x_test, post_mean, post_std, mse, mre, percentage_val_errors, avg_uncovered_ci_area, evaluation_time = self.evaluate()
+        x_test, x_test_unscaled, post_mean, post_std, mse, mre, percentage_val_errors, \
+            avg_uncovered_ci_area, evaluation_time = self.evaluate()
         print("\nEvaluation time: ", evaluation_time)
         print("\nMean squared error: ", round(mse,6))
         print("Mean relative error: ", round(mre,6))
@@ -387,6 +388,11 @@ class BNN_smMC(PyroModule):
         evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
                            "avg_uncovered_ci_area":avg_uncovered_ci_area, "evaluation_time":evaluation_time}
 
-        return x_test, post_mean, post_std, evaluation_dict
+        # if self.model_name == "Poisson":
+        #     return x_test_unscaled, post_mean, post_std, evaluation_dict
+
+        # else:
+        #     return x_test, post_mean, post_std, evaluation_dict
+        return x_test_unscaled, post_mean, post_std, evaluation_dict
 
 #todo: usare GPU

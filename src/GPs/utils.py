@@ -10,8 +10,15 @@ def normalize_columns(x, a=-1, b=1):
     return normalized_x
 
 def Poisson_satisfaction_function(lam):
-    lam = lam.clone().detach()
-    return torch.exp(-lam)*(1+lam+(lam**2)/2+(lam**3)/6)
+    if type(lam)==np.ndarray:
+        return np.exp(-lam)*(1+lam+(lam**2)/2+(lam**3)/6)
+
+    elif type(lam)==torch.Tensor:
+        lam = lam.clone().detach()
+        return torch.exp(-lam)*(1+lam+(lam**2)/2+(lam**3)/6)
+
+    else:
+        raise NotImplementedError
 
 def Poisson_observations(n_points, n_params=1):
     x_val = []
