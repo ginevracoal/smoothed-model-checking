@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 
 class DeterministicNetwork(nn.Module):
   
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size, architecture_name):
 
         # initialize nn.Module
         super(DeterministicNetwork, self).__init__()
@@ -25,16 +25,29 @@ class DeterministicNetwork(nn.Module):
         output_size = 1
       
         # architecture
-        self.model = nn.Sequential(
-                     nn.Linear(input_size, hidden_size),
-                     nn.LeakyReLU(),
-                     #nn.Linear(hidden_size, hidden_size),
-                     #nn.LeakyReLU(),
-                     nn.Linear(hidden_size, output_size),
-                     nn.Sigmoid()
-                     )
+        if architecture_name=='2L':
+
+            self.model = nn.Sequential(
+                         nn.Linear(input_size, hidden_size),
+                         nn.LeakyReLU(),
+                         nn.Linear(hidden_size, output_size),
+                         nn.Sigmoid()
+                         )
+
+        elif architecture_name=='3L':
+
+            self.model = nn.Sequential(
+                         nn.Linear(input_size, hidden_size),
+                         nn.LeakyReLU(),
+                         nn.Linear(hidden_size, hidden_size),
+                         nn.LeakyReLU(),
+                         nn.Linear(hidden_size, output_size),
+                         nn.Sigmoid()
+                         )
+
         # possibilità: togliere sigmoid da qui e metterla nel model della bnn
         self.name = "deterministic_network"
+        self.architecture_name = architecture_name
 
     def forward(self, inputs, *args, **kwargs):
         """ Compute predictions on `inputs`. """

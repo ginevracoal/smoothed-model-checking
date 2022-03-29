@@ -38,12 +38,13 @@ def execution_time(start, end):
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, n_hidden=10, n_test_points=20):
+    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, architecture_name='2L', 
+        n_hidden=10, n_test_points=20):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
         # BayesianNetwork extends PyroModule class
-        self.det_network = DeterministicNetwork(input_size, n_hidden)
+        self.det_network = DeterministicNetwork(input_size=input_size, hidden_size=n_hidden, architecture_name=architecture_name)
         self.name = "bayesian_network"
 
         self.train_set_fn = train_set
@@ -51,7 +52,7 @@ class BNN_smMC(PyroModule):
         self.input_size = input_size
         self.n_hidden = n_hidden
         self.output_size = 1
-        self.n_test_preds = 500
+        self.n_test_preds = n_test_points
         self.n_test_points = n_test_points
         self.model_name = model_name
         self.param_name = list_param_names
@@ -253,83 +254,86 @@ class BNN_smMC(PyroModule):
         UncVolume = 2*1.96*test_std_pred.flatten()
         AvgUncVolume = np.mean(UncVolume)
 
-        if self.input_size == 1:
-            fig = plt.figure()
-            if self.model_name == "Poisson":
-                poiss_satisf_fnc = lambda x: np.exp(-x)*(1+x+x**2/2+x**3/6)
-                plt.plot(x_test, poiss_satisf_fnc(x_test_unscaled), 'b', label="valid")
-            else: 
-                plt.plot(self.X_val_scaled.flatten(), self.T_val_scaled/self.M_val, 'b', label="valid")
-            plt.plot(x_test.flatten(), test_mean_pred, 'r', label="bnn")
-            LB = test_mean_pred.flatten()-1.96*test_std_pred.flatten()
-            plt.fill_between(x_test.flatten(), [max(lb,0) for lb in LB], test_mean_pred.flatten()+1.96*test_std_pred.flatten(), color='r', alpha = 0.1)#/np.sqrt(self.n_test_preds)
-            plt.scatter(self.X_train_scaled.flatten(), self.T_train_scaled.flatten()/self.M_train, marker='+', color='g', label="train")
-            plt.legend()
-            plt.xlabel(self.param_name[0])
-            plt.title(self.model_name)
-            plt.tight_layout()
+        # if self.input_size == 1:
+        #     fig = plt.figure()
+        #     if self.model_name == "Poisson":
+        #         poiss_satisf_fnc = lambda x: np.exp(-x)*(1+x+x**2/2+x**3/6)
+        #         plt.plot(x_test, poiss_satisf_fnc(x_test_unscaled), 'b', label="valid")
+        #     else: 
+        #         plt.plot(self.X_val_scaled.flatten(), self.T_val_scaled/self.M_val, 'b', label="valid")
+        #     plt.plot(x_test.flatten(), test_mean_pred, 'r', label="bnn")
+        #     LB = test_mean_pred.flatten()-1.96*test_std_pred.flatten()
+        #     plt.fill_between(x_test.flatten(), [max(lb,0) for lb in LB], test_mean_pred.flatten()+1.96*test_std_pred.flatten(), color='r', alpha = 0.1)#/np.sqrt(self.n_test_preds)
+        #     plt.scatter(self.X_train_scaled.flatten(), self.T_train_scaled.flatten()/self.M_train, marker='+', color='g', label="train")
+        #     plt.legend()
+        #     plt.xlabel(self.param_name[0])
+        #     plt.title(self.model_name)
+        #     plt.tight_layout()
             
-            figname = self.plot_path+"satisf_fnc_comparison.png"
-            plt.savefig(figname)
-            plt.close()
+        #     figname = self.plot_path+"satisf_fnc_comparison.png"
+        #     plt.savefig(figname)
+        #     plt.close()
 
-            fig = plt.figure()
-            plt.plot(x_test_unscaled, UncVolume)
-            plt.xlabel(self.param_name[0])
-            plt.ylabel("uncertainty")
-            plt.title(self.model_name)
-            figname = self.plot_path+"uncertainty_volume.png"
-            plt.tight_layout()
-            plt.savefig(figname)
-            plt.close()
+        #     fig = plt.figure()
+        #     plt.plot(x_test_unscaled, UncVolume)
+        #     plt.xlabel(self.param_name[0])
+        #     plt.ylabel("uncertainty")
+        #     plt.title(self.model_name)
+        #     figname = self.plot_path+"uncertainty_volume.png"
+        #     plt.tight_layout()
+        #     plt.savefig(figname)
+        #     plt.close()
 
-            fig = plt.figure()
-            plt.plot(self.X_val.flatten(), val_dist)
-            plt.xlabel(self.param_name[0])
-            plt.ylabel("absolute error")
-            plt.title(self.model_name)
-            figname = self.plot_path+"absolute_error.png"
-            plt.tight_layout()
-            plt.savefig(figname)
-            plt.close()
+        #     fig = plt.figure()
+        #     plt.plot(self.X_val.flatten(), val_dist)
+        #     plt.xlabel(self.param_name[0])
+        #     plt.ylabel("absolute error")
+        #     plt.title(self.model_name)
+        #     figname = self.plot_path+"absolute_error.png"
+        #     plt.tight_layout()
+        #     plt.savefig(figname)
+        #     plt.close()
 
-        elif self.input_size == 2:
+        # elif self.input_size == 2:
 
-            fig = plt.figure()
-            h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(test_mean_pred, (self.n_test_points, self.n_test_points)))
-            plt.colorbar()
-            plt.xlabel(self.param_name[1])
-            plt.ylabel(self.param_name[0])
-            plt.title(self.model_name)
-            plt.tight_layout()
+        #     fig = plt.figure()
+        #     h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(test_mean_pred, (self.n_test_points, self.n_test_points)))
+        #     plt.colorbar()
+        #     plt.xlabel(self.param_name[1])
+        #     plt.ylabel(self.param_name[0])
+        #     plt.title(self.model_name)
+        #     plt.tight_layout()
             
-            figname = self.plot_path+"satisf_fnc_comparison.png"
-            plt.savefig(figname)
-            plt.close()
+        #     figname = self.plot_path+"satisf_fnc_comparison.png"
+        #     plt.savefig(figname)
+        #     plt.close()
             
-            fig = plt.figure()
-            h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(UncVolume, (self.n_test_points, self.n_test_points)))
-            plt.colorbar()
-            plt.xlabel(self.param_name[1])
-            plt.ylabel(self.param_name[0])
-            plt.title(self.model_name+"uncertainty")
-            plt.tight_layout()
+        #     fig = plt.figure()
+        #     h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(UncVolume, (self.n_test_points, self.n_test_points)))
+        #     plt.colorbar()
+        #     plt.xlabel(self.param_name[1])
+        #     plt.ylabel(self.param_name[0])
+        #     plt.title(self.model_name+"uncertainty")
+        #     plt.tight_layout()
             
-            figname = self.plot_path+"uncertainty.png"
-            plt.savefig(figname)
-            plt.close()
+        #     figname = self.plot_path+"uncertainty.png"
+        #     plt.savefig(figname)
+        #     plt.close()
 
-            fig = plt.figure()
-            sqrt_val_shape = int(np.sqrt(self.n_val_points))
-            h = plt.contourf(np.reshape(val_dist, (sqrt_val_shape, sqrt_val_shape)))
-            plt.xlabel(self.param_name[1])
-            plt.ylabel(self.param_name[0])
-            plt.tight_layout()
-            plt.colorbar()
-            figname = self.plot_path+"absolute_error.png"
-            plt.close()
+        #     fig = plt.figure()
+        #     sqrt_val_shape = int(np.sqrt(self.n_val_points))
+        #     h = plt.contourf(np.reshape(val_dist, (sqrt_val_shape, sqrt_val_shape)))
+        #     plt.xlabel(self.param_name[1])
+        #     plt.ylabel(self.param_name[0])
+        #     plt.tight_layout()
+        #     plt.colorbar()
+        #     figname = self.plot_path+"absolute_error.png"
+        #     plt.close()
 
-        return x_test, x_test_unscaled, test_mean_pred, test_std_pred, MSE, MRE, PercErr, AvgUncVolume, evaluation_time
+        x_val = self.X_val_scaled
+        x_val_unscaled = self.X_val
+
+        return x_val, x_val_unscaled, val_mean_pred, val_std_pred, MSE, MRE, PercErr, AvgUncVolume, evaluation_time
 
     def save(self, net_name = "bnn_net.pt"):
 
@@ -354,8 +358,8 @@ class BNN_smMC(PyroModule):
         self.set_training_options(n_epochs, lr)
 
         fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr, identifier)
-        self.plot_path = f"BNNs/{plots_path}/BNN_Plots_{self.casestudy_id}_2L_Arch_{fld_id}/"
-        self.model_path = os.path.join("BNNs",models_path,f"BNN_{self.casestudy_id}_2L_Arch_{fld_id}")
+        self.plot_path = f"BNNs/{plots_path}/BNN_Plots_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}/"
+        self.model_path = os.path.join("BNNs",models_path,f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}")
 
         os.makedirs(self.plot_path, exist_ok=True)
         os.makedirs(f"BNNs/{models_path}", exist_ok=True)
@@ -366,13 +370,13 @@ class BNN_smMC(PyroModule):
             print("Saving...")
             self.save()
 
-            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_2L_Arch_{fld_id}"),"w")
+            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}"),"w")
             file.writelines(training_time)
             file.close()
 
         else:
             self.load()
-            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_2L_Arch_{fld_id}"),"r+")
+            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}"),"r+")
             print(f"\nTraining time = {file.read()}")
 
 

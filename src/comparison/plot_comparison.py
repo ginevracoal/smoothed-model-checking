@@ -28,6 +28,7 @@ parser.add_argument("--bnn_n_epochs", default=10000, type=int, help="Number of t
 parser.add_argument("--bnn_lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--bnn_identifier", default=1, type=int)
 parser.add_argument("--bnn_n_hidden", default=10, type=int)
+parser.add_argument("--bnn_architecture", default='2L', type=str)
 parser.add_argument("--gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--gp_variational_strategy", default='unwhitened', type=str, help="Variational strategy")
@@ -123,6 +124,8 @@ for filepath, train_filename, val_filename, params_list in data_paths:
 
         p1, p2 = params_list[0], params_list[1]
 
+        print("gp", post_mean.shape)
+
         data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
         data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
         data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
@@ -147,7 +150,8 @@ for filepath, train_filename, val_filename, params_list in data_paths:
     pyro.clear_param_store()
     n_test_points = 100 if filepath=='Poisson' else len(x_val)
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
-        input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=n_test_points)
+        input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=n_test_points,
+        architecture_name=args.bnn_architecture)
 
     x_test, post_mean, post_std, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
         identifier=args.bnn_identifier, train_flag=False)
@@ -180,13 +184,6 @@ for filepath, train_filename, val_filename, params_list in data_paths:
 
     elif n_params==2:
 
-        x_test = []
-        for col_idx in range(n_params):
-            single_param_values = bnn_smmc.X_val[:,col_idx]
-            x_test.append(torch.linspace(single_param_values.min(), single_param_values.max(), bnn_smmc.n_val_points))
-        x_test = torch.stack(x_test, dim=1)
-        x_test = np.array(list(product(x_test[:,0], x_test[:,1])))
-
         data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean.flatten()})
         data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
         data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
@@ -200,7 +197,6 @@ for filepath, train_filename, val_filename, params_list in data_paths:
 
 
     if fig:
-        # fig.legend()
         plt.tight_layout()
         plt.close()
         os.makedirs(os.path.join("comparison", plots_path), exist_ok=True)
