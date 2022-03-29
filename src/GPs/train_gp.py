@@ -36,11 +36,13 @@ plots_path = os.path.join("GPs", plots_path)
 os.makedirs(os.path.dirname(models_path), exist_ok=True)
 os.makedirs(os.path.dirname(plots_path), exist_ok=True)
 
+
 for filepath, train_filename, val_filename, params_list in data_paths:
 
+    n_epochs = 100 if train_filename=="PhosRelay_DS_100000_latin_samples_10obs_k0k1k2k3k4" else args.n_epochs
     print(f"\n=== Training {train_filename} ===")
 
-    out_filename = f"{args.likelihood}_{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
+    out_filename = f"{args.likelihood}_{train_filename}_epochs={n_epochs}_lr={args.lr}"
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         data = pickle.load(handle)
@@ -80,7 +82,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
     else:
 
         model, training_time = train_GP(model=model, likelihood=likelihood, x_train=normalized_x_train, 
-            y_train=y_train, n_trials_train=n_trials_train, n_epochs=args.n_epochs, lr=args.lr)
+            y_train=y_train, n_trials_train=n_trials_train, n_epochs=n_epochs, lr=args.lr)
         torch.save(model.state_dict(), os.path.join(models_path, "gp_state_"+out_filename+".pth"))
 
         file = open(os.path.join(models_path,f"gp_{out_filename}_training_time.txt"),"w")

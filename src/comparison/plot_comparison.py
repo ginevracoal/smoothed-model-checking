@@ -28,7 +28,7 @@ parser.add_argument("--bnn_n_epochs", default=10000, type=int, help="Number of t
 parser.add_argument("--bnn_lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--bnn_identifier", default=1, type=int)
 parser.add_argument("--bnn_n_hidden", default=10, type=int)
-parser.add_argument("--bnn_architecture", default='2L', type=str)
+parser.add_argument("--bnn_architecture", default='3L', type=str)
 parser.add_argument("--gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--gp_variational_strategy", default='unwhitened', type=str, help="Variational strategy")
@@ -48,9 +48,11 @@ for filepath, train_filename, val_filename, params_list in data_paths:
     sns.set_palette(palette)
     matplotlib.rc('font', **{'size':10, 'weight' : 'bold'})
 
-    out_filename = f"{args.gp_likelihood}_{train_filename}_epochs={args.gp_n_epochs}_lr={args.gp_lr}"
+    gp_n_epochs = 100 if train_filename=="PhosRelay_DS_100000_latin_samples_10obs_k0k1k2k3k4" else args.gp_n_epochs
+    out_filename = f"{args.gp_likelihood}_{train_filename}_epochs={gp_n_epochs}_lr={args.gp_lr}"
 
     print(f"\n=== Loading GP model {out_filename} ===")
+
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         data = pickle.load(handle)

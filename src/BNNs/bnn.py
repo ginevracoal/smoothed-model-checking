@@ -339,7 +339,7 @@ class BNN_smMC(PyroModule):
 
         param_store = pyro.get_param_store()
         print(f"\nlearned params = {param_store}")
-        param_store.save(self.model_path+net_name)
+        param_store.save(self.model_path+"_"+net_name)
 
     def load(self, net_name = "bnn_net.pt"):
         path = self.model_path+"_"+net_name
@@ -380,11 +380,11 @@ class BNN_smMC(PyroModule):
             print(f"\nTraining time = {file.read()}")
 
 
-        print("Evaluating...")
+        # print("Evaluating...")
         x_test, x_test_unscaled, post_mean, post_std, mse, mre, percentage_val_errors, \
             avg_uncovered_ci_area, evaluation_time = self.evaluate()
-        print("\nEvaluation time: ", evaluation_time)
-        print("\nMean squared error: ", round(mse,6))
+        print("Evaluation time: ", evaluation_time)
+        print("Mean squared error: ", round(mse,6))
         print("Mean relative error: ", round(mre,6))
         print("Percentage of validation errors: ", round(percentage_val_errors,2), "%")
         print("Average uncertainty area: ", avg_uncovered_ci_area, "\n")

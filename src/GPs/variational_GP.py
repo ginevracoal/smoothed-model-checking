@@ -135,8 +135,8 @@ def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_
         uncovered_ci_area = 2*z*post_std
         avg_uncovered_ci_area = torch.mean(uncovered_ci_area)
 
-        print(f"\nEvaluation time = {evaluation_time}")
-        print(f"\nMean squared error: {mse}")
+        print(f"Evaluation time = {evaluation_time}")
+        print(f"Mean squared error: {mse}")
         print(f"Mean relative error: {mre}")
         print(f"Percentage of validation errors: {percentage_val_errors} %")
         print(f"Average uncertainty area:  {avg_uncovered_ci_area}\n")
