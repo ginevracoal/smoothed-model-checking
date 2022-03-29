@@ -61,6 +61,11 @@ for filepath, train_filename, val_filename, params_list in data_paths:
     normalized_x_train = normalize_columns(x_train) 
     inducing_points = normalize_columns(x_train_binomial)
 
+    if len(inducing_points)>=10000:
+        torch.manual_seed(0)
+        idxs = torch.tensor(random.sample(range(len(inducing_points)), 1000))
+        inducing_points = inducing_points[idxs]
+
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution,
         variational_strategy=args.variational_strategy)
 

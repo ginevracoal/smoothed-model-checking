@@ -7,10 +7,12 @@ import itertools
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from tqdm import tqdm
 from itertools import product
 import matplotlib.pyplot as plt
 from gpytorch.models import ApproximateGP
 from gpytorch.functions import log_normal_cdf
+from torch.utils.data import TensorDataset, DataLoader
 from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
 from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
 
@@ -53,6 +55,9 @@ def train_GP(model, likelihood, x_train, y_train, n_trials_train, n_epochs, lr):
     np.random.seed(0)
     torch.manual_seed(0)
 
+    dataset = TensorDataset(x_train,y_train) 
+    train_loader = DataLoader(dataset=dataset, batch_size=1000, shuffle=True)
+
     model.train()
     likelihood.train()
     likelihood.n_trials = n_trials_train
@@ -62,12 +67,13 @@ def train_GP(model, likelihood, x_train, y_train, n_trials_train, n_epochs, lr):
 
     print()
     start = time.time()
-    for i in range(n_epochs):
-        optimizer.zero_grad()
-        output = model(x_train)
-        loss = -elbo(output, y_train)
-        loss.backward()
-        optimizer.step()
+    for i in tqdm(range(n_epochs)):
+        for x_batch, y_batch in train_loader:
+            optimizer.zero_grad()
+            output = model(x_batch)
+            loss = -elbo(output, y_batch)
+            loss.backward()
+            optimizer.step()
 
         if i % 10 == 0:
             print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
