@@ -206,7 +206,7 @@ class BNN_smMC(PyroModule):
     def evaluate(self):
         random.seed(0)
         np.random.seed(0)
-        torch.manual_seed(0)
+        torch.manual_seed(0)    
 
         start = time.time()
 

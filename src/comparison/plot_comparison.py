@@ -66,6 +66,11 @@ for filepath, train_filename, val_filename, params_list in data_paths:
 
     normalized_x_train = normalize_columns(x_train) 
     inducing_points = normalize_columns(x_train_binomial)
+    
+    if len(inducing_points)>=10000:
+        torch.manual_seed(0)
+        idxs = torch.tensor(random.sample(range(len(inducing_points)), 1000))
+        inducing_points = inducing_points[idxs]
 
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.gp_variational_distribution,
         variational_strategy=args.gp_variational_strategy)
@@ -125,8 +130,6 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         fig, ax = plt.subplots(1, 3, figsize=(13, 4), dpi=100)
 
         p1, p2 = params_list[0], params_list[1]
-
-        print("gp", post_mean.shape)
 
         data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
         data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
