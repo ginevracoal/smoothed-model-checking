@@ -37,7 +37,7 @@ os.makedirs(os.path.dirname(models_path), exist_ok=True)
 os.makedirs(os.path.dirname(plots_path), exist_ok=True)
 
 
-for filepath, train_filename, val_filename, params_list in data_paths:
+for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
 
     n_epochs = 100 if train_filename=="PhosRelay_DS_100000_latin_samples_10obs_k0k1k2k3k4" else args.n_epochs
     print(f"\n=== Training {train_filename} ===")

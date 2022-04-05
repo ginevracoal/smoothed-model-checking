@@ -42,7 +42,7 @@ z=1.96
 palette = sns.color_palette("magma_r", 3)
 
 
-for filepath, train_filename, val_filename, params_list in data_paths:
+for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
 
     sns.set_style("darkgrid")
     sns.set_palette(palette)
@@ -63,6 +63,8 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         likelihood = BinomialLikelihood()
     else:
         raise NotImplementedError
+
+    print("n_params =", n_params)
 
     normalized_x_train = normalize_columns(x_train) 
     inducing_points = normalize_columns(x_train_binomial)
@@ -110,7 +112,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
                 label='true satisfaction',  legend=None, palette=palette)
             sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
                 label='training points', marker='.', color='black',  legend=None, palette=palette)
-            ax[0].set_xlabel(params_list[0])
+            ax[0].set_xlabel(math_params_list[0])
             ax[0].set_ylabel('Satisfaction probability')
             ax[0].set_title('GP')
 
@@ -121,7 +123,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
             ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
             sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[0], label='validation pts', 
                 legend=None, palette=palette)
-            ax[0].set_xlabel(params_list[0])
+            ax[0].set_xlabel(math_params_list[0])
             ax[0].set_ylabel('Satisfaction probability')
             ax[0].set_title('GP')
 
@@ -138,6 +140,8 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         data = data.pivot(p1, p2, "val_counts")
         sns.heatmap(data, ax=ax[0], label='validation pts')
         ax[0].set_title("Validation set")
+        ax[0].set_xlabel(math_params_list[0])
+        ax[0].set_ylabel(math_params_list[1])
 
         data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
         data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
@@ -146,6 +150,8 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         data = data.pivot(p1, p2, "posterior_preds")
         sns.heatmap(data, ax=ax[1], label='GP posterior preds')
         ax[1].set_title("GP")
+        ax[1].set_xlabel(math_params_list[0])
+        ax[1].set_ylabel(math_params_list[1])
 
     print("\n=== Loading BNN model ===")
 
@@ -174,7 +180,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
                 label='true satisfaction', palette=palette)
             sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[1], 
                 label='training points', marker='.', color='black', palette=palette)
-            ax[1].set_xlabel(params_list[0])
+            ax[1].set_xlabel(math_params_list[0])
             ax[1].set_title('BNN')
 
         else: 
@@ -184,7 +190,7 @@ for filepath, train_filename, val_filename, params_list in data_paths:
             ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
             sns.scatterplot(x=bnn_smmc.X_val.flatten(), y=bnn_smmc.T_val.flatten()/bnn_smmc.M_val, 
                 ax=ax[1], label='validation pts', palette=palette)
-            ax[1].set_xlabel(params_list[0])
+            ax[1].set_xlabel(math_params_list[0])
             ax[1].set_title('BNN')
 
     elif n_params==2:
@@ -196,13 +202,14 @@ for filepath, train_filename, val_filename, params_list in data_paths:
         data = data.pivot(p1, p2, "posterior_preds")
         sns.heatmap(data, ax=ax[2])
         ax[2].set_title("BNN")
+        ax[2].set_xlabel(math_params_list[0])
+        ax[2].set_ylabel(math_params_list[1])
 
-        ax[2].set_xlabel(params_list[0])
-        ax[2].set_ylabel(params_list[1])
 
-
-    if fig:
+    if n_params<=2:
         plt.tight_layout()
         plt.close()
         os.makedirs(os.path.join("comparison", plots_path), exist_ok=True)
-        fig.savefig(os.path.join("comparison", plots_path, f"{train_filename}.png"))
+
+        plot_filename = "Poisson" if val_filename is None else val_filename
+        fig.savefig(os.path.join("comparison", plots_path, f"{plot_filename}.png"))

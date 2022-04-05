@@ -26,7 +26,7 @@ args = parser.parse_args()
 
 
 
-for filepath, train_filename, val_filename, params_list in data_paths:
+for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
 
     df_file_train = os.path.join(os.path.join(data_path, filepath, train_filename+".pickle"))
     df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
