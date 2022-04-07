@@ -44,6 +44,7 @@ class BooleanLabeler(object):
 
             trajectories = np.stack([LeftSide, RightSide])
             formula_variables = ['L', 'R']
+
         else:
             trajectories = np.stack([self.extractVarAtPosFromX(experiment, species) for species in self.D["variables"]])
             formula_variables = self.D["variables"]
