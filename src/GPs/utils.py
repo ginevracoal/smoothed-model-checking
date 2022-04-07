@@ -51,10 +51,10 @@ def build_binomial_dataframe(data):
     success_counts = [len(row[row==1.]) for row in labels]
     success_counts = torch.tensor(success_counts, dtype=torch.float32)
 
-    print("\nparams shape =", params.shape)
-    print("labels shape =", labels.shape)
-    print("n. trials =", n_trials)
-    print("Params True label counts shape =", success_counts.shape)
+    # print("\nparams shape =", params.shape)
+    # print("labels shape =", labels.shape)
+    # print("n. trials =", n_trials)
+    # print("Params True label counts shape =", success_counts.shape)
 
     return params, success_counts, n_params, n_trials
 
