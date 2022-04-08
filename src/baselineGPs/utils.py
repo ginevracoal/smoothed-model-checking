@@ -6,14 +6,23 @@ import numpy as np
 
 sys.path.append(".")
 from gpytorch.functions import log_normal_cdf
+from baselineGPs.binomial_likelihood import Binomial
 from GPs.utils import execution_time, normalize_columns
 
 def posterior_predictive(model, x, n_trials, n_posterior_samples):
     Y_metadata = {'trials':1}
 
     normalized_x = normalize_columns(x).numpy()
-    post_mean, post_std = model.predict(normalized_x, Y_metadata=Y_metadata)
-    return post_mean.squeeze(), post_std.squeeze()
+
+    # post_mean, post_std = model.predict(normalized_x, Y_metadata=Y_metadata)
+
+    model.Y_metadata=Y_metadata
+    post_samples = model.posterior_samples(normalized_x, size=n_posterior_samples, likelihood=Binomial(), 
+        Y_metadata=Y_metadata).squeeze()
+    post_mean = post_samples.mean(1).squeeze()
+    post_std = post_samples.std(1).squeeze()
+
+    return post_mean, post_std, post_samples
 
 def train_GP(model, x_train, y_train):
     random.seed(0)
@@ -33,7 +42,7 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
     n_val_points = len(x_val)
     
     start = time.time()
-    post_mean, post_std = posterior_predictive(model=model, x=x_val, n_trials=n_trials_val, 
+    post_mean, post_std, post_samples = posterior_predictive(model=model, x=x_val, n_trials=n_trials_val, 
         n_posterior_samples=n_posterior_samples)
     evaluation_time = execution_time(start=start, end=time.time())
 
@@ -60,4 +69,4 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
     evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
                     "avg_uncertainty_ci_area":avg_uncertainty_ci_area, "evaluation_time":evaluation_time}
 
-    return x_val, post_mean, post_std, evaluation_dict  
+    return x_val, post_samples, evaluation_dict  

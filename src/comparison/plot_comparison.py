@@ -1,5 +1,6 @@
 import os
 import sys
+import GPy
 import pyro
 import torch
 import random
@@ -15,7 +16,10 @@ import matplotlib.pyplot as plt
 sys.path.append(".")
 from paths import *
 from BNNs.bnn import BNN_smMC
-from GPs.variational_GP import GPmodel, evaluate_GP
+from GPs.variational_GP import GPmodel
+from GPs.variational_GP import evaluate_GP as evaluate_var_GP
+from baselineGPs.utils import train_GP, evaluate_GP
+from baselineGPs.binomial_likelihood import Binomial
 from GPs.binomial_likelihood import BinomialLikelihood
 from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns, Poisson_satisfaction_function
 
@@ -88,7 +92,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
     if filepath=='Poisson':
 
-        x_test, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood,
+        x_test, post_mean, post_std, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood,
             n_posterior_samples=args.gp_n_posterior_samples)
 
     else: 
@@ -98,8 +102,8 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
-        x_test, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val, 
-            n_trials_val=n_trials_val, n_posterior_samples=args.gp_n_posterior_samples)
+        x_test, post_mean, post_std, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood, x_val=x_val, 
+            y_val=y_val, n_trials_val=n_trials_val, n_posterior_samples=args.gp_n_posterior_samples)
 
 
     if n_params==1:
@@ -113,15 +117,15 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
             sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[0], 
                 label='true satisfaction',  legend=None, palette=palette)
-            sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
-                label='Training', marker='.', color='black', alpha=alpha, legend=None, palette=palette, linewidth=0)
+            # sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
+            #     label='Training', marker='.', color='black', alpha=alpha, legend=None, palette=palette, linewidth=0)
             ax[0].set_xlabel(math_params_list[0])
             ax[0].set_ylabel('Satisfaction probability')
             ax[0].set_title('GP')
 
         else:
-            sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
-                label='Training', marker='.', color='black', alpha=alpha, legend=None, palette=palette, linewidth=0)
+            # sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
+            #     label='Training', marker='.', color='black', alpha=alpha, legend=None, palette=palette, linewidth=0)
             sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='Posterior',  legend=None, palette=palette)
             ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
             sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[0], label='Validation', 
@@ -181,14 +185,14 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
             sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[1], 
                 label='true satisfaction', palette=palette)
-            sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[1], 
-                label='Training', marker='.', color='black', alpha=alpha, palette=palette, linewidth=0)
+            # sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[1], 
+            #     label='Training', marker='.', color='black', alpha=alpha, palette=palette, linewidth=0)
             ax[1].set_xlabel(math_params_list[0])
             ax[1].set_title('BNN')
 
         else: 
-            sns.scatterplot(x=bnn_smmc.X_train.flatten(), y=bnn_smmc.T_train.flatten()/bnn_smmc.M_train, ax=ax[1], 
-                label='Training', marker='.', color='black', alpha=alpha, palette=palette, linewidth=0)
+            # sns.scatterplot(x=bnn_smmc.X_train.flatten(), y=bnn_smmc.T_train.flatten()/bnn_smmc.M_train, ax=ax[1], 
+            #     label='Training', marker='.', color='black', alpha=alpha, palette=palette, linewidth=0)
             sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='Posterior', palette=palette)
             ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
             sns.scatterplot(x=bnn_smmc.X_val.flatten(), y=bnn_smmc.T_val.flatten()/bnn_smmc.M_val, 
@@ -209,6 +213,90 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         ax[2].set_xlabel(math_params_list[0])
         ax[2].set_ylabel(math_params_list[1])
 
+
+    print(f"\n=== Loading baseline model {train_filename} ===")
+
+    with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
+        data = pickle.load(handle)
+
+    if args.gp_likelihood=='binomial':
+        x_train, y_train, n_params, n_trials_train = build_binomial_dataframe(data)
+        x_train_binomial, y_train_binomial = x_train, y_train
+
+    else:
+        raise NotImplementedError
+
+    normalized_x_train = normalize_columns(x_train).numpy()
+    y_train = y_train.unsqueeze(1).numpy()
+
+    Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
+    
+    likelihood = Binomial()
+    kernel = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=0.2)
+    inference = GPy.inference.latent_function_inference.Laplace()
+    model = GPy.core.GP(X=normalized_x_train, Y=y_train, kernel=kernel, inference_method=inference,
+                                    likelihood=likelihood, Y_metadata=Y_metadata)
+
+
+    with open(os.path.join("baselineGPs", models_path, "gp_"+train_filename+".pkl"), 'rb') as file:
+        model = pickle.load(file)
+
+    file = open(os.path.join("baselineGPs", models_path,f"gp_{train_filename}_training_time.txt"),"r+")
+    print(f"\nTraining time = {file.read()}")
+
+    with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+        val_data = pickle.load(handle)
+    
+    x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
+
+    x_test, post_samples, evaluation_dict = evaluate_GP(model=model, x_val=x_val, y_val=y_val, 
+        n_trials_val=n_trials_val, n_posterior_samples=args.gp_n_posterior_samples, n_params=n_params)
+
+    if n_params==1:
+
+        if filepath=='Poisson':
+
+            raise NotImplementedError
+
+        else:
+            x_test_rep = np.repeat(x_test, post_samples.shape[1])
+            post_mean = post_samples.mean(1).squeeze()
+            post_std = post_samples.std(1).squeeze()
+
+            for idx in range(2):
+                # sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[idx], label='Posterior', palette=palette)
+                # ax[idx].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=ax[idx], label='Laplace',  
+                    legend=None, palette=palette, ci=95)#, err_style="bars", ci=95)
+
+    # elif n_params==2:
+
+    #     fig, ax = plt.subplots(1, 3, figsize=(9, 3), dpi=150, sharex=True, sharey=True)
+
+    #     p1, p2 = params_list[0], params_list[1]
+
+    #     data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
+    #     data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
+    #     data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
+    #     pivot_data = data.pivot(p1, p2, "val_counts")
+    #     pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
+    #     sns.heatmap(pivot_data, ax=ax[0], label='Validation')
+    #     ax[0].set_title("Validation set")
+    #     ax[0].set_xlabel(math_params_list[0])
+    #     ax[0].set_ylabel(math_params_list[1])
+
+    #     data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
+    #     data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
+    #     data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
+    #     pivot_data = data.pivot(p1, p2, "posterior_preds")
+    #     pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
+    #     sns.heatmap(pivot_data, ax=ax[1], label='GP posterior preds')
+    #     ax[1].set_title("GP")
+    #     ax[1].set_xlabel(math_params_list[0])
+    #     ax[1].set_ylabel(math_params_list[1])
+
+
+    ### save plots 
 
     if n_params<=2:
         plt.tight_layout()

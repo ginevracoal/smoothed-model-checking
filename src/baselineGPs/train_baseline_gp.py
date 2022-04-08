@@ -1,16 +1,12 @@
 import os
 import sys
+import GPy
 import torch
 import random
 import argparse
 import numpy as np
 from math import sqrt
 import pickle5 as pickle
-
-import GPy
-
-# from sklearn.gaussian_process import GaussianProcessClassifier
-# from sklearn.gaussian_process.kernels import ConstantKernel, RBF
 
 sys.path.append(".")
 from paths import *
@@ -21,11 +17,13 @@ from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, norma
 random.seed(0)
 np.random.seed(0)
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--likelihood", default='binomial', type=str, help='')
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
-parser.add_argument("--n_posterior_samples", default=13, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=50, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
+
 
 models_path = os.path.join("baselineGPs", models_path)
 os.makedirs(os.path.dirname(models_path), exist_ok=True)
@@ -51,7 +49,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
     
     likelihood = Binomial()
-    kernel = GPy.kern.RBF(input_dim=1, variance=1., lengthscale=0.2)
+    kernel = GPy.kern.RBF(input_dim=n_params, variance=1., lengthscale=0.5)
     inference = GPy.inference.latent_function_inference.Laplace()
     # model = GPy.models.GPClassification(X=normalized_x_train, Y=y_train, kernel=kernel, 
     #                                 likelihood=likelihood, Y_metadata=Y_metadata)
@@ -60,7 +58,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
     if args.load:
         with open(os.path.join(models_path, "gp_"+out_filename+".pkl"), 'rb') as file:
-            loaded_model = pickle.load(file)
+            model = pickle.load(file)
 
         file = open(os.path.join(models_path,f"gp_{out_filename}_training_time.txt"),"r+")
         print(f"\nTraining time = {file.read()}")
