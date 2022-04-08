@@ -15,7 +15,6 @@ from datetime import datetime
 import json
 from smt.sampling_methods import LHS
 
-# TODO: latin hypercube sampling
 class Generator(object):
    
     def __init__(self, argsDictionary):
@@ -30,7 +29,7 @@ class Generator(object):
         """
     
         # Extract params from config file, set the model filepath
-        self.D = self.castParams(self.getModelParameters(argsDictionary))
+        self.D = argsDictionary
 
         # Data folders organization
         self.setup_folders()
@@ -42,8 +41,6 @@ class Generator(object):
         self.stoch_mod.temp_dir = self.D['TempFolder']
         self.dataframes_dir = self.D['DataframeFolder']
 
-        # Print the parameters for debugging purposes
-        self.prettyPrintDictionaryParameters()    
 
     def setup_folders(self):
         
@@ -60,84 +57,32 @@ class Generator(object):
         self.D['TempFolder'].mkdir(parents=True, exist_ok=True)
         self.D['DataframeFolder'].mkdir(parents=True, exist_ok=True)
         
-    def prettyPrintDictionaryParameters(self):
-         #Pretty print parameters
-        print( "MODEL FILE ---> ", self.stoch_mod.model_file,  " \nMODEL DIR ---> ", self.stoch_mod.model_dir ," \nOUTPUT DIR ---> ", self.stoch_mod.output_dir , " \nTEMP DIR ---> ", self.stoch_mod.temp_dir )
-        print("\n".join("{}\t{}".format(k, v) for k, v in self.D.items()))
-        
-    def getModelParameters(self, argsDictionary):
-        """
-        Extract parameters from configuration file.
-        Merge the config file with the 
-        """      
-        path =  argsDictionary['configFolder'] / (argsDictionary['modelName'] + '.cfg')
-        cp = configparser.ConfigParser()
-        cp.read(path)
-        D = {**dict(cp.items('model')), **argsDictionary}
-        return D
-    
-    
-    def is_number(self,a):
-        return a.replace('.','',1).isdigit()
-    
-    def stringListToList(self,s):
-        return s.strip('[').strip(']').split(',')
-    
-    def castParams(self, paramsDictionary):
-        
-        for key, value in paramsDictionary.items(): 
-            #print(key, ' -> ', value, ' -> ', type(value))
-            if isinstance(value, pathlib.PosixPath) is False:
-                # if it is a list ...
-                if("]" in value):
-                    # Converting string to list
-                    L = self.stringListToList(value)
-                    paramsDictionary[key]  = [float(x) if self.is_number(x) else x for x in L]
-                # if it is a single value ...
-                else:
-                    # if it is a number
-                    if(self.is_number(value)):
-                        paramsDictionary[key] = float(value)           
-        # Casting
-        paramsDictionary['n_steps'] = int(paramsDictionary['n_steps'])
-        paramsDictionary['state_space_dim'] = int(paramsDictionary['state_space_dim'])
-        paramsDictionary['param_space_dim'] = int(paramsDictionary['param_space_dim'])
-        paramsDictionary['n_trajs'] = int(paramsDictionary['n_trajs'])
 
-        # Create grid of parameters for simulation
-        paramsDictionary['paramsGrid'] = self.generateGrid(paramsDictionary)
-        paramsDictionary['paramsLatinGrid'] = self.generateLatinGrid(paramsDictionary)
         
-        # How many set of parameters, How many points per set of states. 
-        paramsDictionary['n_combination'] =  paramsDictionary['paramsGrid'].shape[0]
-        
-        # Times
-        paramsDictionary['T'] = int(paramsDictionary['n_steps']*paramsDictionary['time_step'])
-
-        return paramsDictionary
-     
-    def generateGrid(self,paramsDictionary):
+    def generateGrid(self):
 
         # UNIFORM GRID
 
         L = []
-        for p, lower,upper in zip(paramsDictionary['params'],paramsDictionary['params_min'],paramsDictionary['params_max']):
-            bounds = np.linspace(lower, upper, num=int(paramsDictionary['n_steps_param']))
+        for p, lower,upper in zip(self.D['params'],self.D['params_min'],self.D['params_max']):
+            bounds = np.linspace(lower, upper, num=int(self.D['n_steps_param']))
             L.append(bounds) 
         cartesian_product = np.array(list(itertools.product(*L)))
+        print("CARTESIAN SAMPLES = ", cartesian_product)
         return cartesian_product
 
-    def generateLatinGrid(self,paramsDictionary):
+    def generateLatinGrid(self):
 
         # RANDOM UNIFORM SAMPLING
 
         bounds = []
-        for i in range(paramsDictionary["param_space_dim"]):
-            bounds.append([paramsDictionary['params_min'][i], paramsDictionary['params_max'][i]])
+        for i in range(self.D["param_space_dim"]):
+            bounds.append([self.D['params_min'][i], self.D['params_max'][i]])
         lhs_bounds = np.array(bounds)
         sampling_fnc = LHS(xlimits=lhs_bounds)
-        n_latin_samples = int(paramsDictionary["n_steps_param"]**paramsDictionary["param_space_dim"])
+        n_latin_samples = int(self.D["n_steps_param"]**self.D["param_space_dim"])
         sampled_parameters = sampling_fnc(n_latin_samples)
+        print("LATIN SAMPLES = ", sampled_parameters)
         return sampled_parameters
     
     # questo mancava nel codice di Paolo
@@ -168,12 +113,15 @@ class Generator(object):
         traces = np.zeros((self.D['n_combination'], self.D['n_trajs'], self.D['n_steps'] , self.D['state_space_dim']))
         meta =  np.zeros((self.D['n_combination'], self.D['n_trajs'], self.D['param_space_dim'] ))
  
+        self.D["T"] = self.D["time_step"]*self.D["n_steps"]
         extern_counter=0
         
         # ForEach set of params
-        if eval(self.D["latinFlag"]):
+        if self.D["latinFlag"]:
+            self.D['paramsLatinGrid'] = self.generateLatinGrid()
             sampled_parameters = self.D['paramsLatinGrid']
         else:
+            self.D['paramsGrid'] = self.generateGrid()
             sampled_parameters = self.D['paramsGrid']
 
         for param_set in tqdm(sampled_parameters): 
@@ -193,6 +141,7 @@ class Generator(object):
                 
                 # READ SIMULATED RESULTS
                 datapoint = pd.read_csv(filepath_or_buffer= self.stoch_mod.output_dir / Path(self.D['model'] + "_species_timeseries1.txt"), delim_whitespace=True, header=1)
+                #print(datapoint)
                 datapoint_cut = datapoint.drop(labels="Reaction", axis=1).drop(labels='Fired', axis=1).to_numpy()#.drop("N",axis = 1).to_numpy()
                 # PERFORM TRACES STANDARDIZATION THROUGH RESAMPLING
                 new_point = self.time_resampling(datapoint_cut)
@@ -212,8 +161,8 @@ class Generator(object):
             # GLOBAL COUNTER
             extern_counter += 1
          
-        self.results   = np.copy(traces)
-        self.etiquette = np.copy(meta)
+        self.results   = traces
+        self.etiquette = meta
 
         self.traj_dict = {"X": self.results, "Y": self.etiquette} 
                     

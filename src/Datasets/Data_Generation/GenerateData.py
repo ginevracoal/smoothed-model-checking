@@ -4,22 +4,11 @@ import os
 import io
 from pathlib import Path
 from datetime import datetime
+from relay_config import *
+from sir_config import *
+from prgeex_config import *
 
-
-def interpretParams(arguments):
-    """
-    Create dictionary from arguments
-    """
-    
-    D = dict()
-    for arg in vars(arguments):
-        D[arg] = getattr(arguments,arg)
-    return D
-
-def fill_dictionary_with_parameters(arguments):
-    
-    # Read params passed by the script
-    D = interpretParams(arguments)
+def add_flds_to_dictionary(D):
     
     # Set the folder structure 
     D['baseFolder'] = Path.cwd().parent
@@ -35,13 +24,19 @@ def fill_dictionary_with_parameters(arguments):
     
     return D
 
-def run_trajectories_generation(model_name, latin_flag = False):
+def run_trajectories_generation(model_name, list_params, latin_flag = False):
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--modelName", type=str,default=model_name, help="Model name(without suffix .psc")
-    parser.add_argument("--latinFlag", type=str,default=latin_flag, help="Activates latin hyper-cube sampling")
+    if model_name == "PhosRelay":
+        D = relay_config_details(list_params)
+    elif model_name == "SIR":
+        D = sir_config_details(list_params)
+    if model_name == "PrGeEx":
+        D = prgeex_config_details(list_params)
+    
+    D["modelName"] = model_name
+    D["latinFlag"] = latin_flag
 
-    D = fill_dictionary_with_parameters(parser.parse_args())
+    D = add_flds_to_dictionary(D)
     
     # Pass read params and intitialize generator
     G = Generator(D)
