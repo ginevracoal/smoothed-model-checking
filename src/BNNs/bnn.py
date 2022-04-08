@@ -385,7 +385,7 @@ class BNN_smMC(PyroModule):
             avg_uncovered_ci_area, evaluation_time = self.evaluate()
         print("Evaluation time: ", evaluation_time)
         print("Mean squared error: ", round(mse,6))
-        print("Mean relative error: ", round(mre,6))
+        # print("Mean relative error: ", round(mre,6))
         print("Percentage of validation errors: ", round(percentage_val_errors,2), "%")
         print("Average uncertainty area: ", avg_uncovered_ci_area, "\n")
 

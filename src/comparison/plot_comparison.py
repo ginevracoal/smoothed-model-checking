@@ -19,9 +19,6 @@ from GPs.variational_GP import GPmodel, evaluate_GP
 from GPs.binomial_likelihood import BinomialLikelihood
 from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns, Poisson_satisfaction_function
 
-random.seed(0)
-np.random.seed(0)
-torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
@@ -43,6 +40,10 @@ palette = sns.color_palette("magma_r", 3)
 alpha=0.8
 
 for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
+    
+    random.seed(0)
+    np.random.seed(0)
+    torch.manual_seed(0)
 
     sns.set_style("darkgrid")
     sns.set_palette(palette)
