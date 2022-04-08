@@ -88,7 +88,6 @@ def posterior_predictive(model, x, n_posterior_samples):
     normalized_x = normalize_columns(x) 
     posterior = model(normalized_x)
     post_samples = posterior.sample(sample_shape=torch.Size((n_posterior_samples,)))
-
     post_samples = [[torch.exp(log_normal_cdf(post_samples[j, i]))  for i in range(len(x))] \
         for j in range(n_posterior_samples)]
     post_samples = torch.tensor(post_samples)
@@ -97,7 +96,7 @@ def posterior_predictive(model, x, n_posterior_samples):
     post_std = torch.std(post_samples, dim=0).flatten()
     return post_mean, post_std
 
-def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_val=None, n_trials_val=None, z=1.96):
+def evaluate_GP(model, likelihood, n_posterior_samples, x_val=None, y_val=None, n_trials_val=None, z=1.96):
 
     random.seed(0)
     np.random.seed(0)
@@ -126,7 +125,7 @@ def evaluate_GP(model, likelihood, n_posterior_samples, n_params, x_val=None, y_
         assert val_satisfaction_prob.max()<=1
 
         val_dist = torch.abs(val_satisfaction_prob-post_mean)
-        n_val_errors = torch.sum(val_dist > z*post_std)
+        n_val_errors = torch.sum(val_dist > z*post_std)#/torch.sqrt(n_val_points))
         percentage_val_errors = 100*(n_val_errors/n_val_points)
 
         mse = torch.mean(val_dist**2)

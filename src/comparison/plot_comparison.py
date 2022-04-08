@@ -89,7 +89,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     if filepath=='Poisson':
 
         x_test, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood,
-            n_posterior_samples=args.gp_n_posterior_samples, n_params=n_params)
+            n_posterior_samples=args.gp_n_posterior_samples)
 
     else: 
 
@@ -99,7 +99,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
         x_test, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val, 
-            n_trials_val=n_trials_val, n_posterior_samples=args.gp_n_posterior_samples, n_params=n_params)
+            n_trials_val=n_trials_val, n_posterior_samples=args.gp_n_posterior_samples)
 
 
     if n_params==1:

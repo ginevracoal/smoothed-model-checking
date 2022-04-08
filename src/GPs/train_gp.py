@@ -112,7 +112,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
         x_test, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood, x_val=x_val, y_val=y_val, 
-            n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+            n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples)
 
         if n_params<=2:
             fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
