@@ -39,7 +39,7 @@ def execution_time(start, end):
 class BNN_smMC(PyroModule):
 
     def __init__(self, model_name, list_param_names, train_set, val_set, input_size, architecture_name='2L', 
-        n_hidden=10, n_test_points=20):
+        n_hidden=10, n_test_preds=30, n_test_points=20):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
@@ -52,7 +52,7 @@ class BNN_smMC(PyroModule):
         self.input_size = input_size
         self.n_hidden = n_hidden
         self.output_size = 1
-        self.n_test_preds = n_test_points
+        self.n_test_preds = n_test_preds
         self.n_test_points = n_test_points
         self.model_name = model_name
         self.param_name = list_param_names
@@ -157,7 +157,7 @@ class BNN_smMC(PyroModule):
         t_mean = torch.mean(t_hats, 0).numpy()
         t_std = torch.std(t_hats, 0).numpy()
         
-        return preds, t_mean, t_std
+        return t_hats, t_mean, t_std
     
     def set_training_options(self, n_epochs = 1000, lr = 0.01):
 
@@ -203,10 +203,12 @@ class BNN_smMC(PyroModule):
         print("\nTraining time: ", training_time)
         return training_time
 
-    def evaluate(self):
+    def evaluate(self, n_posterior_samples):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)    
+
+        self.n_test_preds = n_posterior_samples
 
         start = time.time()
 
@@ -239,20 +241,29 @@ class BNN_smMC(PyroModule):
         
         evaluation_time = execution_time(start=start, end=time.time())
 
-        val_satisf = self.T_val_scaled/self.M_val
-        val_dist = np.abs(val_satisf-val_mean_pred.flatten())
-        n_val_errors = 0
-        for i in range(self.n_val_points):
-            if val_dist[i] > 1.96*val_std_pred[i,0]:
-                n_val_errors += 1
+        val_mean_pred = val_mean_pred.flatten()
 
-        PercErr = 100*(n_val_errors/self.n_val_points)
+        n_trials_val = self.M_val
+        n_val_points = self.n_val_points
+        # T_val_bnn = T_val_bnn.squeeze()
 
-        MSE = np.mean(val_dist**2)
-        MRE = np.mean(val_dist/(val_satisf.flatten()+self.mre_eps))
+        val_satisfaction_prob = (self.T_val_scaled/n_trials_val).flatten()
 
-        UncVolume = 2*1.96*test_std_pred.flatten()
-        AvgUncVolume = np.mean(UncVolume)
+        q1, q2 = np.quantile(T_val_bnn, q=[0.05, 0.95], axis=0, keepdims=True)
+        assert val_satisfaction_prob.shape == q1.flatten().shape
+
+        n_val_errors = np.sum(val_satisfaction_prob < q1.flatten()) + np.sum(val_satisfaction_prob > q2.flatten())
+        percentage_val_errors = 100*(n_val_errors/n_val_points)
+        assert percentage_val_errors < 100
+
+        # print("\n\n", val_satisfaction_prob.shape, q1.shape, n_trials_val, n_val_errors, n_val_points)
+
+        val_dist = np.abs(val_satisfaction_prob-val_mean_pred)
+        mse = np.mean(val_dist**2)
+        mre = np.mean(val_dist/val_satisfaction_prob+0.000001)
+
+        uncertainty_ci_area = q2-q1 #2*z*post_std
+        avg_uncertainty_ci_area = np.mean(uncertainty_ci_area)
 
         # if self.input_size == 1:
         #     fig = plt.figure()
@@ -333,7 +344,8 @@ class BNN_smMC(PyroModule):
         x_val = self.X_val_scaled
         x_val_unscaled = self.X_val
 
-        return x_val, x_val_unscaled, val_mean_pred, val_std_pred, MSE, MRE, PercErr, AvgUncVolume, evaluation_time
+        return x_val, x_val_unscaled, T_val_bnn, val_mean_pred, val_std_pred, mse, mre, percentage_val_errors, \
+            avg_uncertainty_ci_area, evaluation_time
 
     def save(self, net_name = "bnn_net.pt"):
 
@@ -349,7 +361,7 @@ class BNN_smMC(PyroModule):
             param_store.replace_param(key, value, value)
         print("\nLoading ", path)
 
-    def run(self, n_epochs, lr, identifier=0, train_flag=True):
+    def run(self, n_epochs, lr, n_posterior_samples, identifier=0, train_flag=True):
 
         print("Loading data...")
         self.load_train_data()
@@ -381,8 +393,8 @@ class BNN_smMC(PyroModule):
 
 
         # print("Evaluating...")
-        x_test, x_test_unscaled, post_mean, post_std, mse, mre, percentage_val_errors, \
-            avg_uncovered_ci_area, evaluation_time = self.evaluate()
+        x_test, x_test_unscaled, post_samples, post_mean, post_std, mse, mre, percentage_val_errors, \
+            avg_uncovered_ci_area, evaluation_time = self.evaluate(n_posterior_samples)
         print("Evaluation time: ", evaluation_time)
         print("Mean squared error: ", round(mse,6))
         # print("Mean relative error: ", round(mre,6))
@@ -392,6 +404,6 @@ class BNN_smMC(PyroModule):
         evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
                            "avg_uncovered_ci_area":avg_uncovered_ci_area, "evaluation_time":evaluation_time}
 
-        return x_test_unscaled, post_mean, post_std, evaluation_dict
+        return x_test_unscaled, post_samples, post_mean, post_std, evaluation_dict
 
 #todo: usare GPU

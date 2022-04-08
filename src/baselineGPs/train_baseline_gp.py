@@ -85,5 +85,5 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
-        x_test, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, x_val=x_val, y_val=y_val, 
+        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, x_val=x_val, y_val=y_val, 
             n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
