@@ -6,6 +6,7 @@ from pcheck.semantics import stlBooleanSemantics, stlRobustSemantics
 from pcheck.series.TimeSeries import TimeSeries
 import pickle
 from pathlib import Path
+from tqdm import tqdm
 
 class BooleanLabeler(object):
 
@@ -13,10 +14,12 @@ class BooleanLabeler(object):
     def __init__(self, args_dict):
         self.D = args_dict
         self.timeline = np.linspace(0,self.D["T"], self.D["n_steps"])
-        self.X = self.D["traj_dict"]["X"] # trajectories
-        self.Y = self.D["traj_dict"]["Y"] # parameters
         self.df_path = self.D["dataFolder"] / Path("WorkingDatasets/"+self.D["modelName"]+"/")
     
+    def set_traj_dict(self):
+        self.X = self.D["traj_dict"]["X"] # trajectories
+        self.Y = self.D["traj_dict"]["Y"] # parameters
+
     def extractVarAtPosFromX(self,fullarray, variable):
         return fullarray[:,self.D["position_dict"][variable]]
 
@@ -68,7 +71,8 @@ class BooleanLabeler(object):
         if self.D["modelName"] == "PrGeEx":
             self.compute_avg_traj()
 
-        for i in range(self.D["n_combination"]):
+        for i in tqdm(range(self.D["n_combination"])):
+
             parameters[i] = self.extractParamsFromY(self.Y[i][0])        
             
             for j in range(self.D["n_trajs"]):

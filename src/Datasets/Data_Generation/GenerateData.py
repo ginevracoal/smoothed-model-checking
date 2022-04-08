@@ -7,6 +7,7 @@ from datetime import datetime
 from relay_config import *
 from sir_config import *
 from prgeex_config import *
+from prdeg_config import *
 
 def add_flds_to_dictionary(D):
     
@@ -24,15 +25,44 @@ def add_flds_to_dictionary(D):
     
     return D
 
-def run_trajectories_generation(model_name, list_params, latin_flag = False):
+def get_generator(model_name, list_params, latin_flag = False, train_flag = True):
 
     if model_name == "PhosRelay":
         D = relay_config_details(list_params)
     elif model_name == "SIR":
-        D = sir_config_details(list_params)
-    if model_name == "PrGeEx":
+        D = sir_config_details(list_params, train_flag)
+    elif model_name == "PrGeEx":
         D = prgeex_config_details(list_params)
+    elif model_name == "PRDeg":
+        D = prdeg_config_details(list_params, train_flag)
+    else:
+        D = {}
+        print("{} not defined!!".format(model_name))
+
+    D["modelName"] = model_name
+    D["latinFlag"] = latin_flag
+
+    D = add_flds_to_dictionary(D)
+
+    G = Generator(D)
+
+    return G
+
     
+def run_trajectories_generation(model_name, list_params, latin_flag = False, train_flag = True):
+
+    if model_name == "PhosRelay":
+        D = relay_config_details(list_params)
+    elif model_name == "SIR":
+        D = sir_config_details(list_params, train_flag)
+    elif model_name == "PrGeEx":
+        D = prgeex_config_details(list_params)
+    elif model_name == "PRDeg":
+        D = prdeg_config_details(list_params, train_flag)
+    else:
+        D = {}
+        print("{} not defined!!".format(model_name))
+
     D["modelName"] = model_name
     D["latinFlag"] = latin_flag
 

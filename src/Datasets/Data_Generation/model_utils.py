@@ -12,7 +12,9 @@ def get_model_details(model_name):
     elif model_name == "PrGeEx":    
         formula = 'F_[0,21000](G_[0,5000]((R<0)&(L>0)))'
         position_dict={'PLac':0, 'PLac':1, 'PLacRNAP':2, 'TrLacZ1':3, 'RbsLacZ':4, 'TrLacZ2':5, 'Ribosome':6, 'RbsRibosome':7, 'TrRbsLacZ':8, 'LacZ':9, 'dgrLacZ':10, 'dgrRbsLacZ':11}
-
+    elif model_name == "PRDeg":
+        formula = '(G_[0.,300.](L1P >= L3P)) & (F_[300.,600.](L1P > L3P))'
+        position_dict = {'B':0,'L1':1,'L1P':2,'L2':3,'L2P':4,'L3':5,'L3P':6}
     else:
         formula = ''    
         position_dict = {}
