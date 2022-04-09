@@ -20,10 +20,16 @@ sys.path.append(".")
 from data_utils import normalize_columns, Poisson_satisfaction_function, Poisson_observations
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 
+MAX_N_INDUCING_PTS=1000
 
 class GPmodel(ApproximateGP):
 
     def __init__(self, inducing_points, variational_distribution='cholesky', variational_strategy='default'):
+
+        if len(inducing_points)>MAX_N_INDUCING_PTS:
+            torch.manual_seed(0)
+            idxs = torch.tensor(random.sample(range(len(inducing_points)), MAX_N_INDUCING_PTS))
+            inducing_points = inducing_points[idxs]
 
         if variational_distribution=='cholesky':
             variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))

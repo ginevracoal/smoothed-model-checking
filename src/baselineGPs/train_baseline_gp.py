@@ -12,7 +12,7 @@ sys.path.append(".")
 from paths import *
 from baselineGPs.utils import train_GP, evaluate_GP
 from baselineGPs.binomial_likelihood import Binomial
-from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
+from data_utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
 
 random.seed(0)
 np.random.seed(0)
@@ -20,8 +20,11 @@ np.random.seed(0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--likelihood", default='binomial', type=str, help='')
+parser.add_argument("--inference", default='laplace', type=str, help='Choose laplace or expectation_propagation')
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
 parser.add_argument("--n_posterior_samples", default=30, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--variance", default=.5, type=int, help="")
+parser.add_argument("--lengthscale", default=.5, type=int, help="")
 args = parser.parse_args()
 
 
@@ -49,12 +52,18 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
     
     likelihood = Binomial()
-    kernel = GPy.kern.RBF(input_dim=n_params, variance=1., lengthscale=0.5)
-    inference = GPy.inference.latent_function_inference.Laplace()
-    # model = GPy.models.GPClassification(X=normalized_x_train, Y=y_train, kernel=kernel, 
-    #                                 likelihood=likelihood, Y_metadata=Y_metadata)
-    model = GPy.core.GP(X=normalized_x_train, Y=y_train, kernel=kernel, inference_method=inference,
-                                    likelihood=likelihood, Y_metadata=Y_metadata)
+    kernel = GPy.kern.RBF(input_dim=n_params, variance=args.variance, lengthscale=args.lengthscale)
+
+    if args.inference=='laplace':
+        inference = GPy.inference.latent_function_inference.Laplace()
+        model = GPy.core.GP(X=normalized_x_train, Y=y_train, kernel=kernel, inference_method=inference, likelihood=likelihood, 
+            Y_metadata=Y_metadata)
+
+    # elif args.inference=='expectation_propagation':
+    #     model = GPy.models.GPClassification(X=normalized_x_train, Y=y_train, kernel=kernel, likelihood=likelihood, 
+    #         Y_metadata=Y_metadata)
+    else:
+        raise NotImplementedError
 
     if args.load:
         with open(os.path.join(models_path, "gp_"+out_filename+".pkl"), 'rb') as file:

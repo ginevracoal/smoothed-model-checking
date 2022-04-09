@@ -256,9 +256,9 @@ class BNN_smMC(PyroModule):
             param_store.replace_param(key, value, value)
         print("\nLoading ", path)
 
-    def run(self, n_epochs, lr, n_posterior_samples, identifier=0, train_flag=True):
+    def run(self, n_epochs, lr, n_posterior_samples, identifier=1, train_flag=True):
 
-        print("Loading data...")
+        # print("Loading data...")
         self.load_train_data()
         self.load_val_data()
 

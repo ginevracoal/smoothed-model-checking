@@ -25,6 +25,7 @@ class Binomial(Likelihood):
     def __init__(self, gp_link=None):
         if gp_link is None:
             gp_link = link_functions.Probit()
+            gp_link.nu = 1.
 
         super(Binomial, self).__init__(gp_link, 'Binomial')
 

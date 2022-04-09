@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 sys.path.append(".")
 from paths import *
-from GPs.variational_GP import GPmodel, train_GP, evaluate_GP, plot_GP_posterior
+from GPs.variational_GP import GPmodel, train_GP, evaluate_GP, plot_GP_posterior, MAX_N_INDUCING_PTS
 from GPs.bernoulli_likelihood import BernoulliLikelihood
 from GPs.binomial_likelihood import BinomialLikelihood
 from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
@@ -60,15 +60,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     normalized_x_train = normalize_columns(x_train) 
     inducing_points = normalize_columns(x_train_binomial)
 
-    if len(inducing_points)>1000:
-        torch.manual_seed(0)
-        idxs = torch.tensor(random.sample(range(len(inducing_points)), 1000))
-        inducing_points = inducing_points[idxs]
-        n_epochs = 100
-        
-    else:
-        n_epochs = args.max_n_epochs
-
+    gp_n_epochs = 100 if len(inducing_points)>MAX_N_INDUCING_PTS else args.gp_max_n_epochs
     out_filename = f"{args.likelihood}_{train_filename}_epochs={n_epochs}_lr={args.lr}"
 
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution,

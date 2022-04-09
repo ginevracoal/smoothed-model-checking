@@ -54,4 +54,4 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
     
     evaluation_dict.update({"evaluation_time":evaluation_time})
 
-    return x_val, post_samples, post_mean, post_std, evaluation_dict
+    return x_val.squeeze(), post_samples, post_mean, post_std, evaluation_dict
