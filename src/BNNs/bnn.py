@@ -25,21 +25,15 @@ from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
 
 sys.path.append(".")
 from BNNs.dnn import DeterministicNetwork
+from evaluation_metrics import execution_time, evaluate_posterior_samples
 
-matplotlib.rcParams.update({'font.size': 22})
 softplus = torch.nn.Softplus()
-
-def execution_time(start, end):
-    hours, rem = divmod(end - start, 3600)
-    minutes, seconds = divmod(rem, 60)
-    time = f"{int(hours):0>2}:{int(minutes):0>2}:{int(seconds):0>2}"
-    return time
 
 
 class BNN_smMC(PyroModule):
 
     def __init__(self, model_name, list_param_names, train_set, val_set, input_size, architecture_name='2L', 
-        n_hidden=10, n_test_preds=30, n_test_points=20):
+        n_hidden=10, n_test_points=20):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
@@ -52,7 +46,6 @@ class BNN_smMC(PyroModule):
         self.input_size = input_size
         self.n_hidden = n_hidden
         self.output_size = 1
-        self.n_test_preds = n_test_preds
         self.n_test_points = n_test_points
         self.model_name = model_name
         self.param_name = list_param_names
@@ -140,7 +133,7 @@ class BNN_smMC(PyroModule):
         return lhat
 
     
-    def forward(self, inputs):
+    def forward(self, inputs, n_samples=10):
         """ Compute predictions on `inputs`. 
         `n_samples` is the number of samples from the posterior distribution.
         If `avg_prediction` is True, it returns the average prediction on 
@@ -149,13 +142,13 @@ class BNN_smMC(PyroModule):
 
         preds = []
         # take multiple samples
-        for _ in range(self.n_test_preds):         
+        for _ in range(n_samples):         
             guide_trace = poutine.trace(self.guide).get_trace(inputs)
             preds.append(guide_trace.nodes['_RETURN']['value'])
         
-        t_hats = torch.stack(preds)
-        t_mean = torch.mean(t_hats, 0).numpy()
-        t_std = torch.std(t_hats, 0).numpy()
+        t_hats = torch.stack(preds).squeeze()
+        t_mean = torch.mean(t_hats, 0)
+        t_std = torch.std(t_hats, 0)
         
         return t_hats, t_mean, t_std
     
@@ -172,7 +165,6 @@ class BNN_smMC(PyroModule):
         #adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
         adam_params = {"lr": self.lr}
         optim = Adam(adam_params)
-        #elbo = Trace_ELBO()
         elbo = TraceMeanField_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
 
@@ -208,11 +200,8 @@ class BNN_smMC(PyroModule):
         np.random.seed(0)
         torch.manual_seed(0)    
 
-        self.n_test_preds = n_posterior_samples
-
         start = time.time()
 
-        # it plots the histogram comparison and returns the wasserstein distance over the test set
         with torch.no_grad():
 
             x_val_t = torch.FloatTensor(self.X_val_scaled)
@@ -240,112 +229,18 @@ class BNN_smMC(PyroModule):
             T_val_bnn, val_mean_pred, val_std_pred = self.forward(x_val_t)
         
         evaluation_time = execution_time(start=start, end=time.time())
+        print(f"Evaluation time = {evaluation_time}")
 
-        val_mean_pred = val_mean_pred.flatten()
+        T_val_bnn = T_val_bnn.squeeze()
 
-        n_trials_val = self.M_val
-        n_val_points = self.n_val_points
-        # T_val_bnn = T_val_bnn.squeeze()
+        y_val = torch.tensor(self.T_val_scaled.flatten())
 
-        val_satisfaction_prob = (self.T_val_scaled/n_trials_val).flatten()
+        post_mean, post_std, evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=T_val_bnn, 
+            n_params=self.n_val_points, n_trials=self.M_val)
 
-        q1, q2 = np.quantile(T_val_bnn, q=[0.05, 0.95], axis=0, keepdims=True)
-        assert val_satisfaction_prob.shape == q1.flatten().shape
+        evaluation_dict.update({"evaluation_time":evaluation_time})
 
-        n_val_errors = np.sum(val_satisfaction_prob < q1.flatten()) + np.sum(val_satisfaction_prob > q2.flatten())
-        percentage_val_errors = 100*(n_val_errors/n_val_points)
-        assert percentage_val_errors < 100
-
-        # print("\n\n", val_satisfaction_prob.shape, q1.shape, n_trials_val, n_val_errors, n_val_points)
-
-        val_dist = np.abs(val_satisfaction_prob-val_mean_pred)
-        mse = np.mean(val_dist**2)
-        mre = np.mean(val_dist/val_satisfaction_prob+0.000001)
-
-        uncertainty_ci_area = q2-q1 #2*z*post_std
-        avg_uncertainty_ci_area = np.mean(uncertainty_ci_area)
-
-        # if self.input_size == 1:
-        #     fig = plt.figure()
-        #     if self.model_name == "Poisson":
-        #         poiss_satisf_fnc = lambda x: np.exp(-x)*(1+x+x**2/2+x**3/6)
-        #         plt.plot(x_test, poiss_satisf_fnc(x_test_unscaled), 'b', label="valid")
-        #     else: 
-        #         plt.plot(self.X_val_scaled.flatten(), self.T_val_scaled/self.M_val, 'b', label="valid")
-        #     plt.plot(x_test.flatten(), test_mean_pred, 'r', label="bnn")
-        #     LB = test_mean_pred.flatten()-1.96*test_std_pred.flatten()
-        #     plt.fill_between(x_test.flatten(), [max(lb,0) for lb in LB], test_mean_pred.flatten()+1.96*test_std_pred.flatten(), color='r', alpha = 0.1)#/np.sqrt(self.n_test_preds)
-        #     plt.scatter(self.X_train_scaled.flatten(), self.T_train_scaled.flatten()/self.M_train, marker='+', color='g', label="train")
-        #     plt.legend()
-        #     plt.xlabel(self.param_name[0])
-        #     plt.title(self.model_name)
-        #     plt.tight_layout()
-            
-        #     figname = self.plot_path+"satisf_fnc_comparison.png"
-        #     plt.savefig(figname)
-        #     plt.close()
-
-        #     fig = plt.figure()
-        #     plt.plot(x_test_unscaled, UncVolume)
-        #     plt.xlabel(self.param_name[0])
-        #     plt.ylabel("uncertainty")
-        #     plt.title(self.model_name)
-        #     figname = self.plot_path+"uncertainty_volume.png"
-        #     plt.tight_layout()
-        #     plt.savefig(figname)
-        #     plt.close()
-
-        #     fig = plt.figure()
-        #     plt.plot(self.X_val.flatten(), val_dist)
-        #     plt.xlabel(self.param_name[0])
-        #     plt.ylabel("absolute error")
-        #     plt.title(self.model_name)
-        #     figname = self.plot_path+"absolute_error.png"
-        #     plt.tight_layout()
-        #     plt.savefig(figname)
-        #     plt.close()
-
-        # elif self.input_size == 2:
-
-        #     fig = plt.figure()
-        #     h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(test_mean_pred, (self.n_test_points, self.n_test_points)))
-        #     plt.colorbar()
-        #     plt.xlabel(self.param_name[1])
-        #     plt.ylabel(self.param_name[0])
-        #     plt.title(self.model_name)
-        #     plt.tight_layout()
-            
-        #     figname = self.plot_path+"satisf_fnc_comparison.png"
-        #     plt.savefig(figname)
-        #     plt.close()
-            
-        #     fig = plt.figure()
-        #     h = plt.contourf(x_test_unscaled[:,1], x_test_unscaled[:,0], np.reshape(UncVolume, (self.n_test_points, self.n_test_points)))
-        #     plt.colorbar()
-        #     plt.xlabel(self.param_name[1])
-        #     plt.ylabel(self.param_name[0])
-        #     plt.title(self.model_name+"uncertainty")
-        #     plt.tight_layout()
-            
-        #     figname = self.plot_path+"uncertainty.png"
-        #     plt.savefig(figname)
-        #     plt.close()
-
-        #     fig = plt.figure()
-        #     sqrt_val_shape = int(np.sqrt(self.n_val_points))
-        #     h = plt.contourf(np.reshape(val_dist, (sqrt_val_shape, sqrt_val_shape)))
-        #     plt.xlabel(self.param_name[1])
-        #     plt.ylabel(self.param_name[0])
-        #     plt.tight_layout()
-        #     plt.colorbar()
-        #     figname = self.plot_path+"absolute_error.png"
-        #     plt.close()
-
-        x_val = self.X_val_scaled
-        x_val_unscaled = self.X_val
-
-        return x_val, x_val_unscaled, T_val_bnn, val_mean_pred, val_std_pred, mse, mre, percentage_val_errors, \
-            avg_uncertainty_ci_area, evaluation_time
+        return self.X_val, T_val_bnn, post_mean, post_std, evaluation_dict
 
     def save(self, net_name = "bnn_net.pt"):
 
@@ -391,19 +286,5 @@ class BNN_smMC(PyroModule):
             file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}"),"r+")
             print(f"\nTraining time = {file.read()}")
 
+        return self.evaluate(n_posterior_samples)
 
-        # print("Evaluating...")
-        x_test, x_test_unscaled, post_samples, post_mean, post_std, mse, mre, percentage_val_errors, \
-            avg_uncovered_ci_area, evaluation_time = self.evaluate(n_posterior_samples)
-        print("Evaluation time: ", evaluation_time)
-        print("Mean squared error: ", round(mse,6))
-        # print("Mean relative error: ", round(mre,6))
-        print("Percentage of validation errors: ", round(percentage_val_errors,2), "%")
-        print("Average uncertainty area: ", avg_uncovered_ci_area, "\n")
-
-        evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
-                           "avg_uncovered_ci_area":avg_uncovered_ci_area, "evaluation_time":evaluation_time}
-
-        return x_test_unscaled, post_samples, post_mean, post_std, evaluation_dict
-
-#todo: usare GPU

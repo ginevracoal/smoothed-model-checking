@@ -18,11 +18,10 @@ from paths import *
 from BNNs.bnn import BNN_smMC
 from GPs.variational_GP import GPmodel
 from GPs.variational_GP import evaluate_GP as evaluate_var_GP
-from baselineGPs.utils import train_GP
 from baselineGPs.utils import evaluate_GP as evaluate_Laplace_GP
 from baselineGPs.binomial_likelihood import Binomial
 from GPs.binomial_likelihood import BinomialLikelihood
-from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns, Poisson_satisfaction_function
+from data_utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns, Poisson_satisfaction_function
 
 
 parser = argparse.ArgumentParser()

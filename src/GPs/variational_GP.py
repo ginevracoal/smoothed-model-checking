@@ -17,7 +17,8 @@ from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVaria
 from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
 
 sys.path.append(".")
-from GPs.utils import execution_time, normalize_columns, Poisson_satisfaction_function, Poisson_observations
+from data_utils import normalize_columns, Poisson_satisfaction_function, Poisson_observations
+from evaluation_metrics import execution_time, evaluate_posterior_samples
 
 
 class GPmodel(ApproximateGP):
@@ -117,38 +118,12 @@ def evaluate_GP(model, likelihood, n_posterior_samples, x_val=None, y_val=None, 
         start = time.time()
         post_samples = posterior_predictive(model=model, x=x_val, n_posterior_samples=n_posterior_samples)
         evaluation_time = execution_time(start=start, end=time.time())
-
-
-        val_satisfaction_prob = y_val.flatten()/n_trials_val
-        assert val_satisfaction_prob.min()>=0
-        assert val_satisfaction_prob.max()<=1
-
-        post_mean = torch.mean(post_samples, dim=0).flatten()
-        post_std = torch.std(post_samples, dim=0).flatten()
-
-        q1, q2 = torch.quantile(post_samples, q=torch.tensor([0.05, 0.95]), dim=0, keepdim=True)
-        assert val_satisfaction_prob.shape == q1.flatten().shape
-
-        n_val_errors = torch.sum(val_satisfaction_prob < q1.flatten()) + torch.sum(val_satisfaction_prob > q2.flatten())
-        percentage_val_errors = 100*n_val_errors/n_val_points
-        assert percentage_val_errors < 100
-
-
-        val_dist = torch.abs(val_satisfaction_prob-post_mean)
-        mse = torch.mean(val_dist**2)
-        mre = torch.mean(val_dist/val_satisfaction_prob+0.000001)
-
-        uncertainty_ci_area = q2-q1 #2*z*post_std
-        avg_uncertainty_ci_area = torch.mean(uncertainty_ci_area)
-
         print(f"Evaluation time = {evaluation_time}")
-        print(f"Mean squared error: {mse}")
-        # print(f"Mean relative error: {mre}")
-        print(f"Percentage of validation errors: {percentage_val_errors} %")
-        print(f"Average uncertainty area:  {avg_uncertainty_ci_area}\n")
 
-    evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
-                       "avg_uncertainty_ci_area":avg_uncertainty_ci_area, "evaluation_time":evaluation_time}
+    post_mean, post_std, evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=post_samples, 
+        n_params=n_val_points, n_trials=n_trials_val)
+    
+    evaluation_dict.update({"evaluation_time":evaluation_time})
 
     return x_val, post_samples, post_mean, post_std, evaluation_dict
 
@@ -194,7 +169,6 @@ def plot_GP_posterior(x_train_binomial, y_train_binomial, n_trials_train, x_test
             data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
             data.sort_index(level=0, ascending=True, inplace=True)
 
-            # data = data.sort_values(by=[p1, p2], axis=0, ascending=True)
             data = data.pivot(p1, p2, "val_counts")
             sns.heatmap(data, ax=axis, label='validation pts')
             axis.set_title("validation set")
@@ -204,7 +178,6 @@ def plot_GP_posterior(x_train_binomial, y_train_binomial, n_trials_train, x_test
             data = pd.DataFrame({p1:x_test[:,i],p2:x_test[:,j],'posterior_preds':post_mean})
             data[p1] = data[p1].apply(lambda x: format(float(x),".4f"))
             data[p2] = data[p2].apply(lambda x: format(float(x),".4f"))
-            # data = data.sort_values(by=[p1, p2], axis=0, ascending=True)
             data.sort_index(level=0, ascending=True, inplace=True)
             data = data.pivot(p1, p2, "posterior_preds")
             sns.heatmap(data, ax=axis, label='posterior preds')
