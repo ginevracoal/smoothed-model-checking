@@ -25,6 +25,7 @@ from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
 
 sys.path.append(".")
 from BNNs.dnn import DeterministicNetwork
+from data_utils import Poisson_observations
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 
 softplus = torch.nn.Softplus()
@@ -32,7 +33,7 @@ softplus = torch.nn.Softplus()
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, architecture_name='2L', 
+    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, architecture_name='3L', 
         n_hidden=10, n_test_points=20):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
@@ -195,7 +196,9 @@ class BNN_smMC(PyroModule):
         print("\nTraining time: ", training_time)
         return training_time
 
-    def evaluate(self, n_posterior_samples):
+    def evaluate(self, n_posterior_samples, poisson=False):
+        # Does not work for Poisson case 
+
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)    
@@ -204,7 +207,15 @@ class BNN_smMC(PyroModule):
 
         with torch.no_grad():
 
-            x_val_t = torch.FloatTensor(self.X_val_scaled)
+            if self.model_name == 'Poisson':
+
+                x_val_t, y_val = Poisson_observations(n_posterior_samples)
+                print(x_val_t.shape)
+                y_val = y_val.flatten()
+
+            else:
+                x_val_t = torch.FloatTensor(self.X_val_scaled)
+                y_val = torch.tensor(self.T_val_scaled.flatten())
 
             x_test_t = []
             x_test_unscaled_t = []
@@ -232,8 +243,6 @@ class BNN_smMC(PyroModule):
         print(f"Evaluation time = {evaluation_time}")
 
         T_val_bnn = T_val_bnn.squeeze()
-
-        y_val = torch.tensor(self.T_val_scaled.flatten())
 
         post_mean, post_std, evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=T_val_bnn, 
             n_params=self.n_val_points, n_trials=self.M_val)

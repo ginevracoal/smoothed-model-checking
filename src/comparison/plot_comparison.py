@@ -67,6 +67,7 @@ def plot_posterior_preds(filepath, ax, ax_idxs, params_list, math_params_list, x
                 axis.fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
             else:
                 x_test_rep = np.repeat(x_test, post_samples.shape[0])
+                print(x_test_rep.shape, post_samples.shape)
                 sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=axis, label='Posterior', 
                     palette=palette, ci=95)
 
@@ -151,13 +152,20 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     file = open(os.path.join("baselineGPs", models_path,f"gp_{train_filename}_training_time.txt"),"r+")
     print(f"\nTraining time = {file.read()}")
 
-    with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-        val_data = pickle.load(handle)
-    
-    x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
+    if filepath=='Poisson':
 
-    x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, y_val=y_val, 
-        n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=None, 
+            y_val=None, n_trials_val=None, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+
+    else: 
+
+        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+            val_data = pickle.load(handle)
+        
+        x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
+
+        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, 
+            y_val=y_val, n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
     if n_params==1:
         fig, ax = plt.subplots(1, 3, figsize=(10, 3), dpi=150, sharex=True, sharey=True)
@@ -227,7 +235,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
 
     pyro.clear_param_store()
-    n_test_points = 100 if filepath=='Poisson' else len(x_val)
+    n_test_points = 100 if filepath=='Poisson' else args.n_posterior_samples
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
         input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=n_test_points,
         architecture_name=args.bnn_architecture)

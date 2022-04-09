@@ -86,7 +86,9 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     print(f"\n=== Validation {val_filename} ===")
 
     if filepath=='Poisson':
-        raise NotImplementedError
+
+        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, x_val=None, y_val=None, 
+            n_trials_val=None, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
     else:
         with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:

@@ -7,8 +7,9 @@ import numpy as np
 sys.path.append(".")
 from gpytorch.functions import log_normal_cdf
 from baselineGPs.binomial_likelihood import Binomial
-from data_utils import normalize_columns
+from data_utils import normalize_columns, Poisson_observations
 from evaluation_metrics import execution_time, evaluate_posterior_samples
+
 
 def posterior_predictive(model, x, n_trials, n_posterior_samples):
     Y_metadata = {'trials':1}
@@ -36,10 +37,18 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
     random.seed(0)
     np.random.seed(0)
 
-    n_val_points = len(x_val)
-    val_satisfaction_prob = y_val.flatten().numpy()/n_trials_val
-    assert val_satisfaction_prob.min()>=0
-    assert val_satisfaction_prob.max()<=1
+    if x_val is None: # Poisson case-study
+
+        n_val_points = 100
+        x_val, y_val = Poisson_observations(n_val_points)
+        n_trials_val=1 
+
+    else:
+        n_val_points = len(x_val)
+
+    # val_satisfaction_prob = y_val.flatten().numpy()/n_trials_val
+    # assert val_satisfaction_prob.min()>=0
+    # assert val_satisfaction_prob.max()<=1
     
     start = time.time()
     post_samples = posterior_predictive(model=model, x=x_val, n_trials=n_trials_val, n_posterior_samples=n_posterior_samples)
@@ -48,7 +57,8 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
     post_samples = np.transpose(post_samples)
 
     print(f"Evaluation time = {evaluation_time}")
-
+    # print(y_val.shape)
+    # exit()
     post_mean, post_std, evaluation_dict = evaluate_posterior_samples(y=y_val.numpy(), post_samples=post_samples, 
         n_params=n_val_points, n_trials=n_trials_val)
     

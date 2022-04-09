@@ -25,7 +25,7 @@ def Poisson_observations(n_points, n_params=1):
     for col_idx in range(n_params):
         x_val.append(torch.linspace(0.1, 5, n_points))
     x_val = torch.stack(x_val, dim=1)
-    y_val = Poisson_satisfaction_function(x_val)
+    y_val = Poisson_satisfaction_function(x_val).squeeze()
     return x_val, y_val
 
 def build_bernoulli_dataframe(data, verbose=False):
