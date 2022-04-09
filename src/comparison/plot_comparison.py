@@ -43,9 +43,69 @@ parser.add_argument("--fill_ci", default=False, type=bool, help="")
 args = parser.parse_args()
 
 
-z=1.96
-alpha=0.8
 palette = sns.color_palette("magma_r", 3)
+
+z=1.96
+
+def plot_posterior_preds(filepath, ax, ax_idxs, params_list, math_params_list, x_train, y_train, x_test, 
+    post_samples, post_mean, post_std, title, legend, z=1.06):
+
+    n_params = len(params_list)
+
+    axis = ax[ax_idxs[0]] if n_params==1 else ax[ax_idxs[1]]
+
+    if n_params==1:
+
+        if filepath=='Poisson':
+
+            if args.plot_training_points:
+                sns.scatterplot(x=x_train, y=y_train, ax=axis, 
+                    label='Training', marker='.', color='black', alpha=0.8, legend=legend, palette=palette, linewidth=0)
+
+            if args.fill_ci:
+                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior', legend=legend, palette=palette)
+                axis.fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+            else:
+                x_test_rep = np.repeat(x_test, post_samples.shape[0])
+                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=axis, label='Posterior', 
+                    palette=palette, ci=95)
+
+            axis.set_xlabel(math_params_list[0])
+            axis.set_ylabel('Satisfaction probability')
+            axis.set_title(title)
+
+        else:
+            if args.plot_training_points:
+                sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=axis, 
+                    label='Training', marker='.', color='black', alpha=alpha, legend=legend, palette=palette, linewidth=0)
+
+            if args.fill_ci:
+                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior',  legend=legend, palette=palette)
+                axis.fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
+            else:
+                x_test_rep = np.repeat(x_test, post_samples.shape[0])
+                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=axis, label='Posterior', 
+                    palette=palette, ci=95)
+
+            axis.set_xlabel(math_params_list[0])
+            axis.set_ylabel('Satisfaction probability')
+            axis.set_title(title)
+
+    elif n_params==2:
+
+        p1, p2 = params_list[0], params_list[1]
+
+        data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
+        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
+        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
+        pivot_data = data.pivot(p1, p2, "posterior_preds")
+        pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
+        sns.heatmap(pivot_data, ax=axis, label=f'{title} posterior preds')
+        axis.set_title(title)
+        axis.set_xlabel(math_params_list[0])
+        axis.set_ylabel(math_params_list[1])
+
+    return ax
 
 for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
     
@@ -99,75 +159,18 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, y_val=y_val, 
         n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
-    ### plot validation
-
     if n_params==1:
-
-        fig, ax = plt.subplots(1, 2, figsize=(8, 3), dpi=150, sharex=True, sharey=True)
-
-        if filepath=='Poisson':
-            for axis in ax:
-                sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=axis, 
-                    label='true satisfaction',  legend=None, palette=palette)
-
-        else:
-            for axis in ax:
-                sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=axis, label='Validation', 
-                    legend=None, palette=palette, linewidth=0)
+        fig, ax = plt.subplots(1, 3, figsize=(10, 3), dpi=150, sharex=True, sharey=True)
 
     elif n_params==2:
-
         fig, ax = plt.subplots(1, 4, figsize=(11, 3), dpi=150, sharex=True, sharey=True)
-
-        axis = ax[0]
-        p1, p2 = params_list[0], params_list[1]
-
-        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
-        pivot_data = data.pivot(p1, p2, "val_counts")
-        pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=axis, label='Validation')
-        axis.set_title("Validation set")
-        axis.set_xlabel(math_params_list[0])
-        axis.set_ylabel(math_params_list[1])
 
     ### plot Laplace
 
-    if n_params==1:
-
-        if filepath=='Poisson':
-
-            raise NotImplementedError
-
-            # todo!
-
-        else:
-
-            x_val_rep = np.repeat(x_val, post_samples.shape[0])
-            for idx in range(2):
-
-                # if args.fill_ci:
-                #     sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[idx], label='Laplace', legend=legend, palette=palette)
-                #     ax[idx].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
-
-                # else:
-                legend = None if idx==0 else 'auto'
-                sns.lineplot(x=x_val_rep.flatten(), y=post_samples.flatten(), ax=ax[idx], label='Laplace',  
-                    legend=legend, palette=palette, ci=95, err_style="bars")
-
-    elif n_params==2:
-        axis = ax[1]
-
-        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'posterior_preds':post_mean})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
-        pivot_data = data.pivot(p1, p2, "posterior_preds")
-        pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=axis, label='Baseline posterior preds')
-        axis.set_title("Baseline")
-        axis.set_xlabel(math_params_list[0])
-        axis.set_ylabel(math_params_list[1])
+    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[0,1], params_list=params_list, 
+        math_params_list=math_params_list, 
+        x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
+        post_samples=post_samples, post_mean=post_mean, post_std=post_std, title='Laplace GP', legend=None)
 
     print(f"\n=== Eval GP model on {val_filename} ===")
 
@@ -213,58 +216,10 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood, 
             x_val=x_val, y_val=y_val, n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples)
 
-
-    if n_params==1:
-
-        if filepath=='Poisson':
-
-            if args.plot_training_points:
-                sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
-                    label='Training', marker='.', color='black', alpha=alpha, legend=None, palette=palette, linewidth=0)
-
-            if args.fill_ci:
-                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='Posterior', legend=None, palette=palette)
-                ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
-            else:
-                x_test_rep = np.repeat(x_test, post_samples.shape[0])
-                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=ax[0], label='Posterior', 
-                    palette=palette, ci=95)
-
-            ax[0].set_xlabel(math_params_list[0])
-            ax[0].set_ylabel('Satisfaction probability')
-            ax[0].set_title('GP')
-
-        else:
-            if args.plot_training_points:
-                sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[0], 
-                    label='Training', marker='.', color='black', alpha=alpha, legend=None, palette=palette, linewidth=0)
-
-            if args.fill_ci:
-                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[0], label='Posterior',  legend=None, palette=palette)
-                ax[0].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
-            else:
-                x_test_rep = np.repeat(x_test, post_samples.shape[0])
-                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=ax[0], label='Posterior', 
-                    palette=palette, ci=95)
-
-            ax[0].set_xlabel(math_params_list[0])
-            ax[0].set_ylabel('Satisfaction probability')
-            ax[0].set_title('GP')
-
-    elif n_params==2:
-
-        axis = ax[2]
-        p1, p2 = params_list[0], params_list[1]
-
-        data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
-        pivot_data = data.pivot(p1, p2, "posterior_preds")
-        pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=axis, label='GP posterior preds')
-        axis.set_title("GP")
-        axis.set_xlabel(math_params_list[0])
-        axis.set_ylabel(math_params_list[1])
+    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[1,2], params_list=params_list, 
+        math_params_list=math_params_list, 
+        x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
+        post_samples=post_samples, post_mean=post_mean, post_std=post_std, title='GP', legend=None)
 
     print(f"\n=== Eval BNN model on {val_filename} ===")
 
@@ -280,59 +235,40 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     x_test, post_samples, post_mean, post_std, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
         train_flag=False, n_posterior_samples=args.n_posterior_samples)
 
+    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[2,3], params_list=params_list, 
+        math_params_list=math_params_list, 
+        x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
+        post_samples=post_samples, post_mean=post_mean, post_std=post_std, title='BNN', legend='auto')
+
+
+    ### plot validation
+
     if n_params==1:
 
-        post_mean, post_std = post_mean.flatten(), post_std.flatten()
+        if filepath=='Poisson':
+            for idx in range(len(ax)):
+                legend = 'auto' if idx==len(ax)-1 else None
+                sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[idx], 
+                    label='true satisfaction',  legend=legend, palette=palette)
 
-        if bnn_smmc.model_name == "Poisson":
-
-            if args.plot_training_points:
-                sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax[1], 
-                    label='Training', marker='.', color='black', alpha=alpha, palette=palette, linewidth=0)
-
-            if args.fill_ci:
-                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='Posterior', palette=palette)
-                ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
-            else:
-                x_test_rep = np.repeat(x_test, post_samples.shape[0])
-                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=ax[1], label='Posterior', 
-                    palette=palette, ci=95)
-
-            sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[1], 
-                label='true satisfaction', palette=palette)
-            ax[1].set_xlabel(math_params_list[0])
-            ax[1].set_title('BNN')
-
-        else: 
-            if args.plot_training_points:
-                sns.scatterplot(x=bnn_smmc.X_train.flatten(), y=bnn_smmc.T_train.flatten()/bnn_smmc.M_train, ax=ax[1], 
-                    label='Training', marker='.', color='black', alpha=alpha, palette=palette, linewidth=0)
-
-            if args.fill_ci:
-                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax[1], label='Posterior', palette=palette)
-                ax[1].fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
-            else:
-                x_test_rep = np.repeat(x_test, post_samples.shape[0])
-                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=ax[1], label='Posterior', 
-                    palette=palette, ci=95)
-
-            # sns.scatterplot(x=bnn_smmc.X_val.flatten(), y=bnn_smmc.T_val.flatten()/bnn_smmc.M_val, 
-            #     ax=ax[1], label='Validation', palette=palette, linewidth=0)
-            ax[1].set_xlabel(math_params_list[0])
-            ax[1].set_title('BNN')
+        else:
+            for idx in range(len(ax)):
+                legend = 'auto' if idx==len(ax)-1 else None
+                sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[idx], label='Validation', 
+                    legend=legend, palette=palette, linewidth=0)
 
     elif n_params==2:
 
-        axis = ax[3]
+        axis = ax[0]
+        p1, p2 = params_list[0], params_list[1]
 
-        data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean.flatten()})
+        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
         data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
         data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
-        data.sort_index(level=0, ascending=True, inplace=True)
-        pivot_data = data.pivot(p1, p2, "posterior_preds")
+        pivot_data = data.pivot(p1, p2, "val_counts")
         pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=axis)
-        axis.set_title("BNN")
+        sns.heatmap(pivot_data, ax=axis, label='Validation')
+        axis.set_title("Validation set")
         axis.set_xlabel(math_params_list[0])
         axis.set_ylabel(math_params_list[1])
 
