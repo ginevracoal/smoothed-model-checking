@@ -196,7 +196,7 @@ class BNN_smMC(PyroModule):
         print("\nTraining time: ", training_time)
         return training_time
 
-    def evaluate(self, n_posterior_samples, poisson=False):
+    def evaluate(self, y_val, n_posterior_samples, poisson=False):
         # Does not work for Poisson case 
 
         random.seed(0)
@@ -209,12 +209,15 @@ class BNN_smMC(PyroModule):
 
             if self.model_name == 'Poisson':
 
-                x_val_t, y_val = Poisson_observations(n_posterior_samples)
-                y_val = y_val.flatten()
+                raise NotImplementedError
+
+                # x_val_t, y_val = Poisson_observations(n_posterior_samples)
+                # y_val = y_val.flatten()
 
             else:
                 x_val_t = torch.FloatTensor(self.X_val_scaled)
-                y_val = torch.tensor(self.T_val_scaled.flatten())
+                # y_val = torch.tensor(self.T_val_scaled.flatten())
+                y_val = torch.tensor(y_val)
 
             x_test_t = []
             x_test_unscaled_t = []
@@ -243,8 +246,8 @@ class BNN_smMC(PyroModule):
 
         T_val_bnn = T_val_bnn.squeeze()
 
-        post_mean, post_std,q1, q2 , evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=T_val_bnn, 
-            n_params=self.n_val_points, n_trials=self.M_val)
+        post_mean, post_std,q1, q2 , evaluation_dict = evaluate_posterior_samples(y_val=y_val,
+            post_samples=T_val_bnn, n_params=self.n_val_points, n_trials=self.M_val)
 
         evaluation_dict.update({"evaluation_time":evaluation_time})
 
@@ -264,7 +267,7 @@ class BNN_smMC(PyroModule):
             param_store.replace_param(key, value, value)
         print("\nLoading ", path)
 
-    def run(self, n_epochs, lr, n_posterior_samples, identifier=1, train_flag=True):
+    def run(self, n_epochs, lr, y_val, n_posterior_samples, identifier=1, train_flag=True):
 
         # print("Loading data...")
         self.load_train_data()
@@ -294,5 +297,5 @@ class BNN_smMC(PyroModule):
             file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}"),"r+")
             print(f"\nTraining time = {file.read()}")
 
-        return self.evaluate(n_posterior_samples)
+        return self.evaluate(y_val, n_posterior_samples)
 

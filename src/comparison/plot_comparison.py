@@ -104,7 +104,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
     sns.set_style("darkgrid")
     sns.set_palette(palette)
-    matplotlib.rc('font', **{'size':10, 'weight' : 'bold'})
+    matplotlib.rc('font', **{'size':9, 'weight' : 'bold'})
 
     print(f"\n=== Eval baseline model on {val_filename} ===")
 
@@ -153,7 +153,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
         x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, 
-            y_val=y_val, n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+            y_val=val_data['labels'], n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
     if n_params==1:
         fig, ax = plt.subplots(1, 3, figsize=(10, 3), dpi=150, sharex=True, sharey=True)
@@ -209,7 +209,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
         x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood, 
-            x_val=x_val, y_val=y_val, n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples)
+            x_val=x_val, y_val=val_data['labels'], n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples)
 
     ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[1,2], params_list=params_list, math_params_list=math_params_list,  
         x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
@@ -227,7 +227,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         architecture_name=args.bnn_architecture)
 
     x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
-        train_flag=False, n_posterior_samples=args.n_posterior_samples)
+        y_val=val_data['labels'], train_flag=False, n_posterior_samples=args.n_posterior_samples)
 
     ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
         x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
@@ -251,7 +251,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
             std = np.sqrt(sample_variance).flatten()
 
             n = n_trials_val
-            errors = (z*std)/np.sqrt(n) # controllare
+            errors = (z*std)/np.sqrt(n)
 
             for idx in range(len(ax)):
                 legend = 'auto' if idx==len(ax)-1 else None

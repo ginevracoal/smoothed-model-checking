@@ -4,65 +4,55 @@ import numpy
 import numpy as np
 
 
-def evaluate_posterior_samples(y, post_samples, n_params, n_trials): # z=1.96
+def evaluate_posterior_samples(y_val, post_samples, n_params, n_trials, z=1.96, alpha1=0.05, alpha2=0.95):
 
-    if type(post_samples)==numpy.ndarray:
+    if y_val.shape != (n_params, n_trials):
+        raise ValueError("y_val should be bernoulli trials")
 
-        satisfaction_prob = y/n_trials
-        assert satisfaction_prob.min()>=0
-        assert satisfaction_prob.max()<=1
+    if type(post_samples)==torch.Tensor:
+        post_samples = post_samples.detach().numpy()
 
-        post_mean = post_samples.mean(0).squeeze()
-        post_std = post_samples.std(0).squeeze()
-        assert satisfaction_prob.shape == post_mean.shape
+    if type(y_val)==torch.Tensor:
+        y_val = y_val.detach().numpy()
 
-        q1, q2 = np.quantile(post_samples, q=[0.05, 0.95], axis=0)
-        assert satisfaction_prob.shape == q1.shape
+    satisfaction_prob = y_val.mean(1).flatten()
+    assert satisfaction_prob.min()>=0
+    assert satisfaction_prob.max()<=1
 
-        n_val_errors = np.sum(satisfaction_prob < q1) + np.sum(satisfaction_prob > q2)
-        percentage_val_errors = 100*(n_val_errors/n_params)
-        assert percentage_val_errors < 100
+    post_mean = post_samples.mean(0).squeeze()
+    post_std = post_samples.std(0).squeeze()
+    assert satisfaction_prob.shape == post_mean.shape
 
-        val_dist = np.abs(satisfaction_prob-post_mean)
-        mse = np.mean(val_dist**2)
-        mre = np.mean(val_dist/satisfaction_prob+0.000001)
+    q1, q2 = np.quantile(post_samples, q=[alpha1, alpha2], axis=0)
+    assert satisfaction_prob.shape == q1.shape 
 
-        ci_uncertainty_area = q2-q1 #2*z*post_std
-        avg_uncertainty_area = np.mean(ci_uncertainty_area)
+    def intervals_intersection(a,b):
+        min_right = np.minimum(a[1],b[1])
+        max_left = np.maximum(a[0],b[0])
+        return np.maximum(0, min_right-max_left)
 
-    elif type(post_samples)==torch.Tensor:
+    sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val]
+    val_std = np.sqrt(sample_variance).flatten()
+    validation_ci = (-(z*val_std)/np.sqrt(n_trials),(z*val_std)/np.sqrt(n_trials))
 
-        satisfaction_prob = y/n_trials
-        assert satisfaction_prob.min()>=0
-        assert satisfaction_prob.max()<=1
+    estimated_ci = (q1,q2)
+    non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci)>0)
+    val_accuracy = 100*non_empty_intersections/n_params
+    assert val_accuracy < 100
 
-        post_mean = torch.mean(post_samples, dim=0).flatten()
-        post_std = torch.std(post_samples, dim=0).flatten()
-        assert satisfaction_prob.shape == post_mean.shape
+    val_dist = np.abs(satisfaction_prob-post_mean)
+    mse = np.mean(val_dist**2)
+    mre = np.mean(val_dist/satisfaction_prob+0.000001)
 
-        q1, q2 = torch.quantile(post_samples, q=torch.tensor([0.05, 0.95]), dim=0)
-        assert satisfaction_prob.shape == q1.shape 
-
-        n_val_errors = torch.sum(satisfaction_prob<q1) + torch.sum(satisfaction_prob>q2)
-        percentage_val_errors = 100*n_val_errors/n_params
-        assert percentage_val_errors < 100
-
-        val_dist = torch.abs(satisfaction_prob-post_mean)
-        mse = torch.mean(val_dist**2)
-        mre = torch.mean(val_dist/satisfaction_prob+0.000001)
-
-        ci_uncertainty_area = q2-q1 #2*z*post_std
-        avg_uncertainty_area = torch.mean(ci_uncertainty_area)
-
-    else: 
-        raise NotImplementedError
+    ci_uncertainty_area = q2-q1 #2*z*post_std
+    avg_uncertainty_area = np.mean(ci_uncertainty_area)
 
     print(f"Mean squared error: {mse}")
     # print(f"Mean relative error: {mre}")
-    print(f"Percentage of validation errors: {percentage_val_errors} %")
+    print(f"Validation accuracy: {val_accuracy} %")
     print(f"Average uncertainty area:  {avg_uncertainty_area}\n")
 
-    evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
+    evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "mre":mre, 
                        "avg_uncertainty_area":avg_uncertainty_area}
 
     return post_mean, post_std, q1, q2, evaluation_dict

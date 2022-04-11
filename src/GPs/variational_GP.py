@@ -40,10 +40,10 @@ class GPmodel(ApproximateGP):
 
         if variational_strategy=='default':
             variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=False)
+                                                                learn_inducing_locations=True)
         elif variational_strategy=='unwhitened':
             variational_strategy = UnwhitenedVariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=False)
+                                                                learn_inducing_locations=True)
         else:
             raise NotImplementedError
 
@@ -114,9 +114,11 @@ def evaluate_GP(model, likelihood, n_posterior_samples, x_val=None, y_val=None, 
 
         if x_val is None: # Poisson case-study
 
-            n_val_points = 100
-            x_val, y_val = Poisson_observations(n_val_points)
-            n_trials_val=1 
+            raise NotImplementedError
+
+            # n_val_points = 100
+            # x_val, y_val = Poisson_observations(n_val_points)
+            # n_trials_val=1 
 
         else:
             n_val_points = len(x_val)
@@ -126,7 +128,8 @@ def evaluate_GP(model, likelihood, n_posterior_samples, x_val=None, y_val=None, 
         evaluation_time = execution_time(start=start, end=time.time())
         print(f"Evaluation time = {evaluation_time}")
 
-    post_mean, post_std, q1, q2, evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=post_samples, 
+    post_mean, post_std, q1, q2, evaluation_dict = evaluate_posterior_samples(y_val=y_val, 
+        post_samples=post_samples, 
         n_params=n_val_points, n_trials=n_trials_val)
     
     evaluation_dict.update({"evaluation_time":evaluation_time})

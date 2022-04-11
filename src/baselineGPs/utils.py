@@ -39,9 +39,11 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
 
     if x_val is None: # Poisson case-study
 
-        n_val_points = 100
-        x_val, y_val = Poisson_observations(n_val_points)
-        n_trials_val=1 
+        raise NotImplementedError
+
+        # n_val_points = 100
+        # x_val, y_val = Poisson_observations(n_val_points)
+        # n_trials_val=1 
 
     else:
         n_val_points = len(x_val)
@@ -54,9 +56,8 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
 
     print(f"Evaluation time = {evaluation_time}")
 
-    post_mean, post_std,q1, q2, evaluation_dict = evaluate_posterior_samples(y=y_val.numpy(), post_samples=post_samples, 
-        n_params=n_val_points, n_trials=n_trials_val)
+    post_mean, post_std, q1, q2, evaluation_dict = evaluate_posterior_samples(y_val=y_val,
+        post_samples=post_samples, n_params=n_val_points, n_trials=n_trials_val)
     
     evaluation_dict.update({"evaluation_time":evaluation_time})
-
     return x_val.squeeze(), post_samples, post_mean, post_std, q1, q2, evaluation_dict
