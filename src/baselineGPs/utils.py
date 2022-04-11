@@ -45,10 +45,6 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
 
     else:
         n_val_points = len(x_val)
-
-    # val_satisfaction_prob = y_val.flatten().numpy()/n_trials_val
-    # assert val_satisfaction_prob.min()>=0
-    # assert val_satisfaction_prob.max()<=1
     
     start = time.time()
     post_samples = posterior_predictive(model=model, x=x_val, n_trials=n_trials_val, n_posterior_samples=n_posterior_samples)
@@ -57,11 +53,10 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
     post_samples = np.transpose(post_samples)
 
     print(f"Evaluation time = {evaluation_time}")
-    # print(y_val.shape)
-    # exit()
-    post_mean, post_std, evaluation_dict = evaluate_posterior_samples(y=y_val.numpy(), post_samples=post_samples, 
+
+    post_mean, post_std,q1, q2, evaluation_dict = evaluate_posterior_samples(y=y_val.numpy(), post_samples=post_samples, 
         n_params=n_val_points, n_trials=n_trials_val)
     
     evaluation_dict.update({"evaluation_time":evaluation_time})
 
-    return x_val.squeeze(), post_samples, post_mean, post_std, evaluation_dict
+    return x_val.squeeze(), post_samples, post_mean, post_std, q1, q2, evaluation_dict

@@ -33,7 +33,7 @@ def build_bernoulli_dataframe(data, verbose=False):
     params_observations = data['labels'].shape[1]
 
     params = np.repeat(params, params_observations, axis=0)
-    labels = torch.tensor(data['labels'], dtype=torch.int64).flatten()
+    labels = torch.tensor(data['labels'], dtype=torch.float32).flatten()
     
     if verbose:
         print("\nparams shape =", params.shape)
@@ -44,7 +44,7 @@ def build_bernoulli_dataframe(data, verbose=False):
 
 def build_binomial_dataframe(data, verbose=False):
     params = torch.tensor(data['params'], dtype=torch.float32)
-    labels = torch.tensor(data['labels'], dtype=torch.int)
+    labels = torch.tensor(data['labels'], dtype=torch.float32)
 
     n_params = params.shape[1]
     n_trials = labels.shape[1]

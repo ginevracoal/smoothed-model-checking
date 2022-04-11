@@ -210,7 +210,6 @@ class BNN_smMC(PyroModule):
             if self.model_name == 'Poisson':
 
                 x_val_t, y_val = Poisson_observations(n_posterior_samples)
-                print(x_val_t.shape)
                 y_val = y_val.flatten()
 
             else:
@@ -244,12 +243,12 @@ class BNN_smMC(PyroModule):
 
         T_val_bnn = T_val_bnn.squeeze()
 
-        post_mean, post_std, evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=T_val_bnn, 
+        post_mean, post_std,q1, q2 , evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=T_val_bnn, 
             n_params=self.n_val_points, n_trials=self.M_val)
 
         evaluation_dict.update({"evaluation_time":evaluation_time})
 
-        return self.X_val, T_val_bnn, post_mean, post_std, evaluation_dict
+        return self.X_val, T_val_bnn, post_mean, post_std, q1, q2, evaluation_dict
 
     def save(self, net_name = "bnn_net.pt"):
 

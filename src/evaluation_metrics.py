@@ -65,7 +65,7 @@ def evaluate_posterior_samples(y, post_samples, n_params, n_trials): # z=1.96
     evaluation_dict = {"percentage_val_errors":percentage_val_errors, "mse":mse, "mre":mre, 
                        "avg_uncertainty_area":avg_uncertainty_area}
 
-    return post_mean, post_std, evaluation_dict
+    return post_mean, post_std, q1, q2, evaluation_dict
 
 def execution_time(start, end):
     hours, rem = divmod(end - start, 3600)

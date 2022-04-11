@@ -126,12 +126,12 @@ def evaluate_GP(model, likelihood, n_posterior_samples, x_val=None, y_val=None, 
         evaluation_time = execution_time(start=start, end=time.time())
         print(f"Evaluation time = {evaluation_time}")
 
-    post_mean, post_std, evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=post_samples, 
+    post_mean, post_std, q1, q2, evaluation_dict = evaluate_posterior_samples(y=y_val, post_samples=post_samples, 
         n_params=n_val_points, n_trials=n_trials_val)
     
     evaluation_dict.update({"evaluation_time":evaluation_time})
 
-    return x_val, post_samples, post_mean, post_std, evaluation_dict
+    return x_val, post_samples, post_mean, post_std, q1, q2, evaluation_dict
 
 def plot_GP_posterior(x_train_binomial, y_train_binomial, n_trials_train, x_test, post_mean, post_std, 
     params_list, x_val=None, y_val=None, n_trials_val=None, z=1.96):

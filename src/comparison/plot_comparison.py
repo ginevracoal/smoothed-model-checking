@@ -39,16 +39,15 @@ parser.add_argument("--baseline_variance", default=.5, type=int, help="")
 parser.add_argument("--baseline_lengthscale", default=.5, type=int, help="")
 parser.add_argument("--n_posterior_samples", default=30, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
-parser.add_argument("--fill_ci", default=False, type=bool, help="")
 args = parser.parse_args()
 
 
 palette = sns.color_palette("magma_r", 3)
-
 z=1.96
 
+
 def plot_posterior_preds(filepath, ax, ax_idxs, params_list, math_params_list, x_train, y_train, x_test, 
-    post_samples, post_mean, post_std, title, legend, z=1.06):
+    post_samples, post_mean, post_std, q1, q2, title, legend):
 
     n_params = len(params_list)
 
@@ -62,14 +61,8 @@ def plot_posterior_preds(filepath, ax, ax_idxs, params_list, math_params_list, x
                 sns.scatterplot(x=x_train, y=y_train, ax=axis, 
                     label='Training', marker='.', color='black', alpha=0.8, legend=legend, palette=palette, linewidth=0)
 
-            if args.fill_ci:
-                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior', legend=legend, palette=palette)
-                axis.fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
-            else:
-                x_test_rep = np.repeat(x_test, post_samples.shape[0])
-                print(x_test_rep.shape, post_samples.shape)
-                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=axis, label='Posterior', 
-                    palette=palette, ci=95)
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior', legend=legend, palette=palette)
+            axis.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
 
             axis.set_xlabel(math_params_list[0])
             axis.set_ylabel('Satisfaction probability')
@@ -80,13 +73,8 @@ def plot_posterior_preds(filepath, ax, ax_idxs, params_list, math_params_list, x
                 sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=axis, 
                     label='Training', marker='.', color='black', alpha=alpha, legend=legend, palette=palette, linewidth=0)
 
-            if args.fill_ci:
-                sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior',  legend=legend, palette=palette)
-                axis.fill_between(x_test.flatten(), post_mean-z*post_std, post_mean+z*post_std, alpha=0.5)
-            else:
-                x_test_rep = np.repeat(x_test, post_samples.shape[0])
-                sns.lineplot(x=x_test_rep.flatten(), y=post_samples.flatten(), ax=axis, label='Posterior', 
-                    palette=palette, ci=95)
+            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior',  legend=legend, palette=palette)
+            axis.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
 
             axis.set_xlabel(math_params_list[0])
             axis.set_ylabel('Satisfaction probability')
@@ -154,7 +142,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
     if filepath=='Poisson':
 
-        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=None, 
+        x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=None, 
             y_val=None, n_trials_val=None, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
     else: 
@@ -164,7 +152,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
-        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, 
+        x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, 
             y_val=y_val, n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
     if n_params==1:
@@ -175,10 +163,9 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
     ### plot Laplace
 
-    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[0,1], params_list=params_list, 
-        math_params_list=math_params_list, 
+    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list, 
         x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        post_samples=post_samples, post_mean=post_mean, post_std=post_std, title='Laplace GP', legend=None)
+        post_samples=post_samples, post_mean=post_mean, post_std=post_std, q1=q1, q2=q2, title='Laplace GP', legend=None)
 
     print(f"\n=== Eval GP model on {val_filename} ===")
 
@@ -211,7 +198,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
 
     if filepath=='Poisson':
 
-        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood,
+        x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood,
             n_posterior_samples=args.n_posterior_samples)
 
     else: 
@@ -221,13 +208,12 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
-        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood, 
+        x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood, 
             x_val=x_val, y_val=y_val, n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples)
 
-    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[1,2], params_list=params_list, 
-        math_params_list=math_params_list, 
+    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[1,2], params_list=params_list, math_params_list=math_params_list,  
         x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        post_samples=post_samples, post_mean=post_mean, post_std=post_std, title='GP', legend=None)
+        post_samples=post_samples, post_mean=post_mean, post_std=post_std, q1=q1, q2=q2, title='GP', legend=None)
 
     print(f"\n=== Eval BNN model on {val_filename} ===")
 
@@ -235,19 +221,17 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
 
     pyro.clear_param_store()
-    n_test_points = 100 if filepath=='Poisson' else args.n_posterior_samples
+    n_test_points = 100 if filepath=='Poisson' else len(x_val)
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
         input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=n_test_points,
         architecture_name=args.bnn_architecture)
 
-    x_test, post_samples, post_mean, post_std, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
+    x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
         train_flag=False, n_posterior_samples=args.n_posterior_samples)
 
-    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[2,3], params_list=params_list, 
-        math_params_list=math_params_list, 
+    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
         x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        post_samples=post_samples, post_mean=post_mean, post_std=post_std, title='BNN', legend='auto')
-
+        post_samples=post_samples, post_mean=post_mean, q1=q1, q2=q2, post_std=post_std, title='BNN', legend='auto')
 
     ### plot validation
 
@@ -260,10 +244,20 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
                     label='true satisfaction',  legend=legend, palette=palette)
 
         else:
+            x_val, y_val_bernoulli = val_data['params'], val_data['labels']
+            p = y_val_bernoulli.mean(1).flatten()
+
+            sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
+            std = np.sqrt(sample_variance).flatten()
+
+            n = n_trials_val
+            errors = (z*std)/np.sqrt(n) # controllare
+
             for idx in range(len(ax)):
                 legend = 'auto' if idx==len(ax)-1 else None
-                sns.scatterplot(x=x_val.flatten(), y=y_val.flatten()/n_trials_val, ax=ax[idx], label='Validation', 
-                    legend=legend, palette=palette, linewidth=0)
+                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', 
+                    legend=legend, palette=palette,  s=15)
+                ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
 
     elif n_params==2:
 
