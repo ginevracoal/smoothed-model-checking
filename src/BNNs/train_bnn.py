@@ -5,6 +5,7 @@ import torch
 import random
 import argparse
 import numpy as np
+import pickle5 as pickle
 
 sys.path.append(".")
 from BNNs.bnn import BNN_smMC
@@ -32,6 +33,9 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     df_file_train = os.path.join(os.path.join(data_path, filepath, train_filename+".pickle"))
     df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
 
+    with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+        val_data = pickle.load(handle)
+
     print("TrainFlag = ", args.train)
     print("Train set: ", df_file_train)
     print("Validation set: ", df_file_val)
@@ -42,5 +46,5 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         input_size=len(params_list), n_hidden=args.n_hidden, architecture_name=args.architecture)
 
     bnn_smmc.run(n_epochs=args.n_epochs, lr=args.lr, identifier=args.identifier, train_flag=args.train, 
-        n_posterior_samples=args.n_posterior_samples)
+        n_posterior_samples=args.n_posterior_samples, y_val=val_data['labels'])
     pyro.clear_param_store()

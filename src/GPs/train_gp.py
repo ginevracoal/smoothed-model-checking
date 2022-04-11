@@ -11,10 +11,10 @@ import matplotlib.pyplot as plt
 
 sys.path.append(".")
 from paths import *
-from GPs.variational_GP import GPmodel, train_GP, evaluate_GP, plot_GP_posterior, MAX_N_INDUCING_PTS
-from GPs.bernoulli_likelihood import BernoulliLikelihood
 from GPs.binomial_likelihood import BinomialLikelihood
-from GPs.utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
+from GPs.bernoulli_likelihood import BernoulliLikelihood
+from data_utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
+from GPs.variational_GP import GPmodel, train_GP, evaluate_GP, plot_GP_posterior, MAX_N_INDUCING_PTS
 
 
 random.seed(0)
@@ -60,7 +60,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     normalized_x_train = normalize_columns(x_train) 
     inducing_points = normalize_columns(x_train_binomial)
 
-    gp_n_epochs = 100 if len(inducing_points)>MAX_N_INDUCING_PTS else args.gp_max_n_epochs
+    n_epochs = 100 if len(inducing_points)>MAX_N_INDUCING_PTS else args.max_n_epochs
     out_filename = f"{args.likelihood}_{train_filename}_epochs={n_epochs}_lr={args.lr}"
 
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution,
@@ -104,7 +104,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
         x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood, 
-            x_val=x_val, y_val_bernoulli=y_val_bernoulli, n_trials_val=n_trials_val, 
+            x_val=x_val, y_val=val_data['labels'], n_trials_val=n_trials_val, 
             n_posterior_samples=args.n_posterior_samples)
 
         if n_params<=2:

@@ -20,7 +20,7 @@ sys.path.append(".")
 from data_utils import normalize_columns, Poisson_satisfaction_function, Poisson_observations
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 
-MAX_N_INDUCING_PTS=1000
+MAX_N_INDUCING_PTS=100000
 
 class GPmodel(ApproximateGP):
 
