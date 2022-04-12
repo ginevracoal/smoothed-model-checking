@@ -4,9 +4,9 @@ import numpy
 import numpy as np
 
 
-def evaluate_posterior_samples(y_val, post_samples, n_params, n_trials, z=1.96, alpha1=0.05, alpha2=0.95):
+def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96, alpha1=0.05, alpha2=0.95):
 
-    if y_val.shape != (n_params, n_trials):
+    if y_val.shape != (n_samples, n_trials):
         raise ValueError("y_val should be bernoulli trials")
 
     if type(post_samples)==torch.Tensor:
@@ -33,11 +33,10 @@ def evaluate_posterior_samples(y_val, post_samples, n_params, n_trials, z=1.96, 
 
     sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val]
     val_std = np.sqrt(sample_variance).flatten()
-    validation_ci = (-(z*val_std)/np.sqrt(n_trials),(z*val_std)/np.sqrt(n_trials))
-
+    validation_ci = (satisfaction_prob-(z*val_std)/np.sqrt(n_trials),satisfaction_prob+(z*val_std)/np.sqrt(n_trials))
     estimated_ci = (q1,q2)
     non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci)>0)
-    val_accuracy = 100*non_empty_intersections/n_params
+    val_accuracy = 100*non_empty_intersections/n_samples
     assert val_accuracy < 100
 
     val_dist = np.abs(satisfaction_prob-post_mean)
@@ -55,7 +54,7 @@ def evaluate_posterior_samples(y_val, post_samples, n_params, n_trials, z=1.96, 
     evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "mre":mre, 
                        "avg_uncertainty_area":avg_uncertainty_area}
 
-    return post_mean, post_std, q1, q2, evaluation_dict
+    return post_mean, q1, q2, evaluation_dict
 
 def execution_time(start, end):
     hours, rem = divmod(end - start, 3600)

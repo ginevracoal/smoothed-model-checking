@@ -11,10 +11,9 @@ import matplotlib.pyplot as plt
 
 sys.path.append(".")
 from paths import *
-from GPs.binomial_likelihood import BinomialLikelihood
-from GPs.bernoulli_likelihood import BernoulliLikelihood
-from data_utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
-from GPs.variational_GP import GPmodel, train_GP, evaluate_GP, plot_GP_posterior, MAX_N_INDUCING_PTS
+from plot_utils import plot_posterior
+from GPs.variational_GP import GPmodel
+from data_utils import normalize_columns, get_tensor_data
 
 
 random.seed(0)
@@ -26,7 +25,7 @@ parser.add_argument("--likelihood", default='binomial', type=str, help='Choose b
 parser.add_argument("--variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--variational_strategy", default='unwhitened', type=str, help="Variational strategy")
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
-parser.add_argument("--max_n_epochs", default=1000, type=int, help="Max number of training iterations")
+parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
@@ -42,75 +41,47 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     print(f"\n=== Training {train_filename} ===")
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
-        data = pickle.load(handle)
+        train_data = pickle.load(handle)
 
-    if args.likelihood=='bernoulli':
-        x_train, y_train, n_params = build_bernoulli_dataframe(data)
-        x_train_binomial, y_train_binomial, _, n_trials_train = build_binomial_dataframe(data)
-        likelihood = BernoulliLikelihood()
-
-    elif args.likelihood=='binomial':
-        x_train, y_train, n_params, n_trials_train = build_binomial_dataframe(data)
-        x_train_binomial, y_train_binomial = x_train, y_train
-        likelihood = BinomialLikelihood()
-
-    else:
-        raise NotImplementedError
-
-    normalized_x_train = normalize_columns(x_train) 
-    inducing_points = normalize_columns(x_train_binomial)
-
-    n_epochs = 100 if len(inducing_points)>MAX_N_INDUCING_PTS else args.max_n_epochs
+    n_epochs = args.n_epochs
     out_filename = f"{args.likelihood}_{train_filename}_epochs={n_epochs}_lr={args.lr}"
+    inducing_points = normalize_columns(get_tensor_data(train_data)[0])
 
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution,
-        variational_strategy=args.variational_strategy)
+        variational_strategy=args.variational_strategy, likelihood=args.likelihood)
 
     if args.load:
-
-        state_dict = torch.load(os.path.join(models_path, "gp_state_"+out_filename+".pth"))
-        model.load_state_dict(state_dict)
-
-        file = open(os.path.join(models_path,f"gp_{out_filename}_training_time.txt"),"r+")
-        print(f"\nTraining time = {file.read()}")
+        model.load(filepath=models_path, filename=out_filename)
 
     else:
-
-        model, training_time = train_GP(model=model, likelihood=likelihood, x_train=normalized_x_train, 
-            y_train=y_train, n_trials_train=n_trials_train, n_epochs=n_epochs, lr=args.lr)
-        torch.save(model.state_dict(), os.path.join(models_path, "gp_state_"+out_filename+".pth"))
-
-        file = open(os.path.join(models_path,f"gp_{out_filename}_training_time.txt"),"w")
-        file.writelines(training_time)
-        file.close()
+        model.train_GP(train_data=train_data, n_epochs=n_epochs, lr=args.lr)
+        model.save(filepath=models_path, filename=out_filename)
 
     print(f"\n=== Validation {val_filename} ===")
 
     if filepath=='Poisson':
 
-        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood,
-            n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+        raise NotImplementedError
 
-        fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
-            n_trials_train=n_trials_train, x_test=x_test, post_mean=post_mean, post_std=post_std, params_list=params_list)
-        os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-        fig.savefig(plots_path+f"{out_filename}.png")
+        # x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood,
+        #     n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+
+        # fig = plot_GP_posterior(case_study=filepath, x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
+        #     n_trials_train=n_trials_train, x_test=x_test, post_mean=post_mean, post_std=post_std, params_list=params_list)
+        # os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+        # fig.savefig(plots_path+f"{out_filename}.png")
 
     else: 
 
         with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
             val_data = pickle.load(handle)
         
-        x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
+        post_mean, q1, q2, evaluation_dict = model.eval_GP(val_data=val_data, n_posterior_samples=args.n_posterior_samples)
 
-        x_test, post_samples, post_mean, post_std, evaluation_dict = evaluate_GP(model=model, likelihood=likelihood, 
-            x_val=x_val, y_val=val_data['labels'], n_trials_val=n_trials_val, 
-            n_posterior_samples=args.n_posterior_samples)
+        if len(params_list)<=2:
 
-        if n_params<=2:
-            fig = plot_GP_posterior(x_train_binomial=x_train_binomial, y_train_binomial=y_train_binomial, 
-                n_trials_train=n_trials_train, x_test=x_test, post_mean=post_mean, post_std=post_std, 
-                params_list=params_list, x_val=x_val, y_val=y_val, n_trials_val=n_trials_val)
+            fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
+                test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
 
             os.makedirs(os.path.dirname(plots_path), exist_ok=True)
             fig.savefig(plots_path+f"{out_filename}.png")

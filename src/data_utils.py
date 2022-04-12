@@ -28,36 +28,35 @@ def Poisson_observations(n_points, n_params=1):
     y_val = Poisson_satisfaction_function(x_val).squeeze()
     return x_val, y_val
 
-def build_bernoulli_dataframe(data, verbose=False):
-    params = torch.tensor(data['params'], dtype=torch.float32)
-    params_observations = data['labels'].shape[1]
+def get_tensor_data(data, verbose=False):
 
-    params = np.repeat(params, params_observations, axis=0)
-    labels = torch.tensor(data['labels'], dtype=torch.float32).flatten()
-    
-    if verbose:
-        print("\nparams shape =", params.shape)
-        print("labels shape =", labels.shape)
-
-    n_params = data['params'].shape[1]
-    return params, labels, n_params
-
-def build_binomial_dataframe(data, verbose=False):
-    params = torch.tensor(data['params'], dtype=torch.float32)
-    labels = torch.tensor(data['labels'], dtype=torch.float32)
-
-    n_params = params.shape[1]
-    n_trials = labels.shape[1]
-
-    success_counts = [len(row[row==1.]) for row in labels]
-    success_counts = torch.tensor(success_counts, dtype=torch.float32)
+    x_data = torch.tensor(data['params'], dtype=torch.float32)
+    y_data = torch.tensor(data['labels'], dtype=torch.float32)
+    n_samples = len(x_data)
+    n_trials = y_data.shape[1]
 
     if verbose:
-        print("\nparams shape =", params.shape)
-        print("labels shape =", labels.shape)
-        print("n. trials =", n_trials)
-        print("Params True label counts shape =", success_counts.shape)
+        print("\nx_data shape =", x_data.shape)
+        print("y_data shape =", y_data.shape)
+        print("n_samples =", n_samples)
+        print("n_trials =", n_trials)
 
-    return params, success_counts, n_params, n_trials
+    return x_data, y_data, n_samples, n_trials
+
+def get_bernoulli_data(data, verbose=False):
+
+    x_data, y_data, n_samples, n_trials = get_tensor_data(data, verbose=verbose)
+    params = np.repeat(x_data, n_trials, axis=0)
+    y_data = y_data.flatten()
+
+    return x_data, y_data, n_samples, n_trials
+
+def get_binomial_data(data, verbose=False):
+
+    x_data, y_data, n_samples, n_trials = get_tensor_data(data, verbose=verbose)
+    success_counts = [len(row[row==1.]) for row in y_data]
+    y_data = torch.tensor(success_counts, dtype=torch.float32)
+
+    return x_data, y_data, n_samples, n_trials
 
 

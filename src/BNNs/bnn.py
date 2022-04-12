@@ -9,6 +9,7 @@ import matplotlib
 import numpy as np
 from math import pi
 import torch.nn as nn
+from tqdm import tqdm
 from pyro import poutine
 import pickle5 as pickle
 import torch.optim as optim
@@ -21,6 +22,7 @@ from itertools import combinations
 from torch.autograd import Variable
 from paths import models_path, plots_path
 from pyro.distributions import Normal, Binomial
+from torch.utils.data import TensorDataset, DataLoader
 from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
 
 sys.path.append(".")
@@ -153,12 +155,12 @@ class BNN_smMC(PyroModule):
         
         return t_hats, t_mean, t_std
     
-    def set_training_options(self, n_epochs = 1000, lr = 0.01):
+    def set_training_options(self, n_epochs, lr):
 
         self.n_epochs = n_epochs
         self.lr = lr        
 
-    def train(self):
+    def train(self, batch_size=1000):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
@@ -169,18 +171,23 @@ class BNN_smMC(PyroModule):
         elbo = TraceMeanField_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
 
-        batch_T_t = torch.FloatTensor(self.T_train_scaled)
-        batch_X_t = torch.FloatTensor(self.X_train_scaled)
-
-        start = time.time()
+        x_train = torch.FloatTensor(self.X_train_scaled)
+        y_train = torch.FloatTensor(self.T_train_scaled)
+        dataset = TensorDataset(x_train,y_train) 
+        train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
         loss_history = []
-        for j in range(self.n_epochs):
-            loss = svi.step(batch_X_t, batch_T_t)/ self.n_training_points
+
+        start = time.time()
+        for j in tqdm(range(self.n_epochs)):
+            for x_batch, y_batch in train_loader:
+                loss = svi.step(x_batch, y_batch)/self.n_training_points
+
             if (j+1)%50==0:
                 print("Epoch ", j+1, "/", self.n_epochs, " Loss ", loss)
                 loss_history.append(loss)
 
+        training_time = execution_time(start=start, end=time.time())
         self.loss_history = loss_history
 
         if self.n_epochs >= 50:
@@ -192,7 +199,6 @@ class BNN_smMC(PyroModule):
             plt.savefig(self.plot_path+"loss.png")
             plt.close()
 
-        training_time = execution_time(start=start, end=time.time())
         print("\nTraining time: ", training_time)
         return training_time
 
@@ -246,12 +252,12 @@ class BNN_smMC(PyroModule):
 
         T_val_bnn = T_val_bnn.squeeze()
 
-        post_mean, post_std,q1, q2 , evaluation_dict = evaluate_posterior_samples(y_val=y_val,
-            post_samples=T_val_bnn, n_params=self.n_val_points, n_trials=self.M_val)
+        post_mean, q1, q2 , evaluation_dict = evaluate_posterior_samples(y_val=y_val,
+            post_samples=T_val_bnn, n_samples=self.n_val_points, n_trials=self.M_val)
 
         evaluation_dict.update({"evaluation_time":evaluation_time})
 
-        return self.X_val, T_val_bnn, post_mean, post_std, q1, q2, evaluation_dict
+        return self.X_val, T_val_bnn, post_mean, q1, q2, evaluation_dict
 
     def save(self, net_name = "bnn_net.pt"):
 

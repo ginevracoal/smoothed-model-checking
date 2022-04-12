@@ -16,13 +16,12 @@ import matplotlib.pyplot as plt
 sys.path.append(".")
 from paths import *
 from BNNs.bnn import BNN_smMC
-from GPs.variational_GP import GPmodel, MAX_N_INDUCING_PTS
-from GPs.variational_GP import evaluate_GP as evaluate_var_GP
-from baselineGPs.utils import evaluate_GP as evaluate_Laplace_GP
-from baselineGPs.binomial_likelihood import Binomial
-from GPs.binomial_likelihood import BinomialLikelihood
-from data_utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns, Poisson_satisfaction_function
-
+from GPs.variational_GP import GPmodel
+# from baselineGPs.binomial_likelihood import Binomial
+# from GPs.variational_GP import evaluate_GP as evaluate_var_GP
+# from baselineGPs.utils import evaluate_GP as evaluate_Laplace_GP
+from plot_utils import plot_posterior_ax, plot_validation_ax
+from data_utils import get_bernoulli_data, get_binomial_data, get_tensor_data, normalize_columns, Poisson_satisfaction_function
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
@@ -32,7 +31,7 @@ parser.add_argument("--bnn_architecture", default='3L', type=str)
 parser.add_argument("--gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--gp_variational_strategy", default='unwhitened', type=str, help="Variational strategy")
-parser.add_argument("--gp_max_n_epochs", default=1000, type=int, help="Max number of training iterations")
+parser.add_argument("--gp_n_epochs", default=100, type=int, help="Max number of training iterations")
 parser.add_argument("--gp_lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--baseline_inference", default='laplace', type=str)
 parser.add_argument("--baseline_variance", default=.5, type=int, help="")
@@ -43,117 +42,13 @@ args = parser.parse_args()
 
 
 palette = sns.color_palette("magma_r", 3)
-z=1.96
-
-
-def plot_posterior_preds(filepath, ax, ax_idxs, params_list, math_params_list, x_train, y_train, x_test, 
-    post_samples, post_mean, post_std, q1, q2, title, legend):
-
-    n_params = len(params_list)
-
-    axis = ax[ax_idxs[0]] if n_params==1 else ax[ax_idxs[1]]
-
-    if n_params==1:
-
-        if filepath=='Poisson':
-
-            if args.plot_training_points:
-                sns.scatterplot(x=x_train, y=y_train, ax=axis, 
-                    label='Training', marker='.', color='black', alpha=0.8, legend=legend, palette=palette, linewidth=0)
-
-            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior', legend=legend, palette=palette)
-            axis.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
-
-            axis.set_xlabel(math_params_list[0])
-            axis.set_ylabel('Satisfaction probability')
-            axis.set_title(title)
-
-        else:
-            if args.plot_training_points:
-                sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=axis, 
-                    label='Training', marker='.', color='black', alpha=alpha, legend=legend, palette=palette, linewidth=0)
-
-            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior',  legend=legend, palette=palette)
-            axis.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
-
-            axis.set_xlabel(math_params_list[0])
-            axis.set_ylabel('Satisfaction probability')
-            axis.set_title(title)
-
-    elif n_params==2:
-
-        p1, p2 = params_list[0], params_list[1]
-
-        data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
-        pivot_data = data.pivot(p1, p2, "posterior_preds")
-        pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=axis, label=f'{title} posterior preds')
-        axis.set_title(title)
-        axis.set_xlabel(math_params_list[0])
-        axis.set_ylabel(math_params_list[1])
-
-    return ax
+sns.set_style("darkgrid")
+sns.set_palette(palette)
+matplotlib.rc('font', **{'size':9, 'weight' : 'bold'})
 
 for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
-    
-    random.seed(0)
-    np.random.seed(0)
-    torch.manual_seed(0)
 
-    sns.set_style("darkgrid")
-    sns.set_palette(palette)
-    matplotlib.rc('font', **{'size':9, 'weight' : 'bold'})
-
-    print(f"\n=== Eval baseline model on {val_filename} ===")
-
-    with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
-        data = pickle.load(handle)
-
-    if args.gp_likelihood=='binomial':
-        x_train, y_train, n_params, n_trials_train = build_binomial_dataframe(data)
-        x_train_binomial, y_train_binomial = x_train, y_train
-
-    else:
-        raise NotImplementedError
-
-    normalized_x_train = normalize_columns(x_train).numpy()
-    y_train = y_train.unsqueeze(1).numpy()
-
-    Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
-    
-    likelihood = Binomial()
-    kernel = GPy.kern.RBF(input_dim=n_params, variance=args.baseline_variance, lengthscale=args.baseline_lengthscale)
-
-    if args.baseline_inference=='laplace':
-        inference = GPy.inference.latent_function_inference.Laplace()
-        model = GPy.core.GP(X=normalized_x_train, Y=y_train, kernel=kernel, inference_method=inference, likelihood=likelihood, 
-            Y_metadata=Y_metadata)
-        
-    else:
-        raise NotImplementedError
-
-    with open(os.path.join("baselineGPs", models_path, "gp_"+train_filename+".pkl"), 'rb') as file:
-        model = pickle.load(file)
-
-    file = open(os.path.join("baselineGPs", models_path,f"gp_{train_filename}_training_time.txt"),"r+")
-    print(f"\nTraining time = {file.read()}")
-
-    if filepath=='Poisson':
-
-        x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=None, 
-            y_val=None, n_trials_val=None, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
-
-    else: 
-
-        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-            val_data = pickle.load(handle)
-        
-        x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
-
-        x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, 
-            y_val=val_data['labels'], n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+    n_params = len(params_list)
 
     if n_params==1:
         fig, ax = plt.subplots(1, 3, figsize=(10, 3), dpi=150, sharex=True, sharey=True)
@@ -161,122 +56,125 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     elif n_params==2:
         fig, ax = plt.subplots(1, 4, figsize=(11, 3), dpi=150, sharex=True, sharey=True)
 
-    ### plot Laplace
-
-    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list, 
-        x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        post_samples=post_samples, post_mean=post_mean, post_std=post_std, q1=q1, q2=q2, title='Laplace GP', legend=None)
-
-    print(f"\n=== Eval GP model on {val_filename} ===")
-
-    full_path = os.path.join(data_path, filepath, train_filename+".pickle")
-    with open(full_path, 'rb') as handle:
-        print(f"\nLoading {full_path}")
-        data = pickle.load(handle)
-
-    if args.gp_likelihood=='binomial':
-        x_train, y_train, n_params, n_trials_train = build_binomial_dataframe(data)
-        x_train_binomial, y_train_binomial = x_train, y_train
-        likelihood = BinomialLikelihood()
-    else:
-        raise NotImplementedError
-
-    normalized_x_train = normalize_columns(x_train) 
-    inducing_points = normalize_columns(x_train_binomial)
+    if n_params<=2:
     
-    gp_n_epochs = 100 if len(inducing_points)>MAX_N_INDUCING_PTS else args.gp_max_n_epochs
-    out_filename = f"{args.gp_likelihood}_{train_filename}_epochs={gp_n_epochs}_lr={args.gp_lr}"
+        random.seed(0)
+        np.random.seed(0)
+        torch.manual_seed(0)
 
-    model = GPmodel(inducing_points=inducing_points, variational_distribution=args.gp_variational_distribution,
-        variational_strategy=args.gp_variational_strategy)
+        # print(f"\n=== Eval baseline model on {val_filename} ===")
 
-    state_dict = torch.load(os.path.join(os.path.join("GPs", models_path), "gp_state_"+out_filename+".pth"))
-    model.load_state_dict(state_dict)
+        # with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
+        #     data = pickle.load(handle)
 
-    file = open(os.path.join("GPs", models_path,f"gp_{out_filename}_training_time.txt"),"r+")
-    print(f"\nTraining time = {file.read()}")
+        # if args.gp_likelihood=='binomial':
+        #     x_train, y_train, n_samples, n_trials_train = get_binomial_data(data)
+        #     x_train_binomial, y_train_binomial = x_train, y_train
 
-    if filepath=='Poisson':
+        # else:
+        #     raise NotImplementedError
 
-        x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood,
-            n_posterior_samples=args.n_posterior_samples)
+        # normalized_x_train = normalize_columns(x_train).numpy()
+        # y_train = y_train.unsqueeze(1).numpy()
 
-    else: 
-
-        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-            val_data = pickle.load(handle)
+        # Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
         
-        x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
+        # likelihood = Binomial()
+        # kernel = GPy.kern.RBF(input_dim=n_params, variance=args.baseline_variance, lengthscale=args.baseline_lengthscale)
 
-        x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = evaluate_var_GP(model=model, likelihood=likelihood, 
-            x_val=x_val, y_val=val_data['labels'], n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples)
+        # if args.baseline_inference=='laplace':
+        #     inference = GPy.inference.latent_function_inference.Laplace()
+        #     model = GPy.core.GP(X=normalized_x_train, Y=y_train, kernel=kernel, inference_method=inference, likelihood=likelihood, 
+        #         Y_metadata=Y_metadata)
+            
+        # else:
+        #     raise NotImplementedError
 
-    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[1,2], params_list=params_list, math_params_list=math_params_list,  
-        x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        post_samples=post_samples, post_mean=post_mean, post_std=post_std, q1=q1, q2=q2, title='GP', legend=None)
+        # with open(os.path.join("baselineGPs", models_path, "gp_"+train_filename+".pkl"), 'rb') as file:
+        #     model = pickle.load(file)
 
-    print(f"\n=== Eval BNN model on {val_filename} ===")
+        # file = open(os.path.join("baselineGPs", models_path,f"gp_{train_filename}_training_time.txt"),"r+")
+        # print(f"\nTraining time = {file.read()}")
 
-    df_file_train = os.path.join(os.path.join(data_path, filepath, train_filename+".pickle"))
-    df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
+        # if filepath=='Poisson':
 
-    pyro.clear_param_store()
-    n_test_points = 100 if filepath=='Poisson' else len(x_val)
-    bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
-        input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=n_test_points,
-        architecture_name=args.bnn_architecture)
+        #     x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=None, 
+        #         y_val=None, n_trials_val=None, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
-    x_test, post_samples, post_mean, post_std, q1, q2, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
-        y_val=val_data['labels'], train_flag=False, n_posterior_samples=args.n_posterior_samples)
+        # else: 
 
-    ax = plot_posterior_preds(filepath=filepath, ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
-        x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        post_samples=post_samples, post_mean=post_mean, q1=q1, q2=q2, post_std=post_std, title='BNN', legend='auto')
+        #     with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+        #         val_data = pickle.load(handle)
+            
+        #     x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
 
-    ### plot validation
+        #     x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, 
+        #         y_val=val_data['labels'], n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
-    if n_params==1:
+        # ax = plot_posterior_preds(case_study=filepath, ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list, 
+        #     x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
+        #     post_samples=post_samples, post_mean=post_mean, post_std=post_std, q1=q1, q2=q2, title='Laplace GP', legend=None)
+
+        print(f"\n=== Eval GP model on {val_filename} ===")
+
+        full_path = os.path.join(data_path, filepath, train_filename+".pickle")
+        with open(full_path, 'rb') as handle:
+            print(f"\nLoading {full_path}")
+            train_data = pickle.load(handle)
+
+        inducing_points = normalize_columns(get_tensor_data(train_data)[0])
+        
+        gp_n_epochs = args.gp_n_epochs #if len(inducing_points)>1000 else args.max_n_epochs
+        out_filename = f"{args.gp_likelihood}_{train_filename}_epochs={gp_n_epochs}_lr={args.gp_lr}"
+
+        model = GPmodel(inducing_points=inducing_points, variational_distribution=args.gp_variational_distribution,
+            variational_strategy=args.gp_variational_strategy, likelihood=args.gp_likelihood)
+
+        model.load(filepath=os.path.join("GPs", models_path), filename=out_filename)
 
         if filepath=='Poisson':
-            for idx in range(len(ax)):
-                legend = 'auto' if idx==len(ax)-1 else None
-                sns.lineplot(x=x_test.flatten(), y=Poisson_satisfaction_function(x_test).flatten(), ax=ax[idx], 
-                    label='true satisfaction',  legend=legend, palette=palette)
+            raise NotImplementedError
 
-        else:
-            x_val, y_val_bernoulli = val_data['params'], val_data['labels']
-            p = y_val_bernoulli.mean(1).flatten()
+        else: 
+            with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+                val_data = pickle.load(handle)
+            
+            post_mean, q1, q2 = model.eval_GP(val_data=val_data, n_posterior_samples=args.n_posterior_samples)
 
-            sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
-            std = np.sqrt(sample_variance).flatten()
+        ax = plot_posterior_ax(ax=ax, ax_idxs=[1,2], params_list=params_list, math_params_list=math_params_list,  
+            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='GP', legend=None,
+            palette=palette)
 
-            n = n_trials_val
-            errors = (z*std)/np.sqrt(n)
+        print(f"\n=== Eval BNN model on {val_filename} ===")
 
-            for idx in range(len(ax)):
-                legend = 'auto' if idx==len(ax)-1 else None
-                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', 
-                    legend=legend, palette=palette,  s=15)
-                ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+        df_file_train = os.path.join(os.path.join(data_path, filepath, train_filename+".pickle"))
+        df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
 
-    elif n_params==2:
+        pyro.clear_param_store()
+        n_test_points = 100 if filepath=='Poisson' else n_samples
+        bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
+            input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=n_test_points,
+            architecture_name=args.bnn_architecture)
 
-        axis = ax[0]
-        p1, p2 = params_list[0], params_list[1]
+        x_test, post_samples, post_mean, q1, q2 = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
+            y_val=val_data['labels'], train_flag=False, n_posterior_samples=args.n_posterior_samples)
 
-        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
-        pivot_data = data.pivot(p1, p2, "val_counts")
-        pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=axis, label='Validation')
-        axis.set_title("Validation set")
-        axis.set_xlabel(math_params_list[0])
-        axis.set_ylabel(math_params_list[1])
+        # ax = plot_posterior_ax(case_study=filepath, ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
+        #     x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
+        #     post_samples=post_samples, post_mean=post_mean, q1=q1, q2=q2, post_std=post_std, title='BNN', legend='auto')
 
-    ### save plots 
+        ax = plot_posterior_ax(ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
+            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='BNN', legend='auto',
+            palette=palette)
 
-    if n_params<=2:
+
+        ### plot validation
+
+        ax = plot_validation_ax(ax=ax, params_list=params_list, math_params_list=math_params_list, 
+            test_data=val_data, val_data=val_data, z=1.96, palette=palette)
+
+        ### save plots 
+
         plt.tight_layout()
         plt.close()
         os.makedirs(os.path.join("comparison", plots_path), exist_ok=True)

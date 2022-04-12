@@ -12,7 +12,7 @@ sys.path.append(".")
 from paths import *
 from baselineGPs.utils import train_GP, evaluate_GP
 from baselineGPs.binomial_likelihood import Binomial
-from data_utils import build_bernoulli_dataframe, build_binomial_dataframe, normalize_columns
+from data_utils import get_bernoulli_data, get_binomial_data, normalize_columns
 
 random.seed(0)
 np.random.seed(0)
@@ -39,8 +39,8 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         data = pickle.load(handle)
 
     if args.likelihood=='binomial':
-        x_train, y_train, n_params, n_trials_train = build_binomial_dataframe(data)
-        x_train_binomial, y_train_binomial = x_train, y_train
+        x_train, y_train, n_params, n_trials_train = get_binomial_data(data)
+        likelihood = Binomial()
 
     else:
         raise NotImplementedError
@@ -51,7 +51,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     out_filename = f"{train_filename}"
     Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
     
-    likelihood = Binomial()
     kernel = GPy.kern.RBF(input_dim=n_params, variance=args.variance, lengthscale=args.lengthscale)
 
     if args.inference=='laplace':
