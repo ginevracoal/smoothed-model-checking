@@ -59,7 +59,7 @@ def plot_posterior_ax(ax, ax_idxs, params_list, math_params_list, train_data, te
 
     return ax
 
-def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, val_data=None, z=1.96):
+def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, val_data=None, val_points=20, z=1.96):
 
     x_val, y_val, n_samples, n_trials = get_binomial_data(val_data)
 
@@ -87,7 +87,7 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
                 legend = 'auto' if idx==len(ax)-1 else None
                 sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', 
                     legend=legend, palette=palette,  s=15)
-                ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+                # ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
 
     elif n_params==2:
 

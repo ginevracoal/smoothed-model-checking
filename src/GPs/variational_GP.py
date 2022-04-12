@@ -45,10 +45,10 @@ class GPmodel(ApproximateGP):
 
         if variational_strategy=='default':
             variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=True)
+                                                                learn_inducing_locations=False)
         elif variational_strategy=='unwhitened':
             variational_strategy = UnwhitenedVariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=True)
+                                                                learn_inducing_locations=False)
         else:
             raise NotImplementedError
 

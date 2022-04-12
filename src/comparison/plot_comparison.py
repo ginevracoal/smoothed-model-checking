@@ -31,7 +31,7 @@ parser.add_argument("--bnn_architecture", default='3L', type=str)
 parser.add_argument("--gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--gp_variational_strategy", default='unwhitened', type=str, help="Variational strategy")
-parser.add_argument("--gp_n_epochs", default=100, type=int, help="Max number of training iterations")
+parser.add_argument("--gp_n_epochs", default=1000, type=int, help="Max number of training iterations")
 parser.add_argument("--gp_lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--baseline_inference", default='laplace', type=str)
 parser.add_argument("--baseline_variance", default=.5, type=int, help="")
@@ -139,7 +139,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
             with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
                 val_data = pickle.load(handle)
             
-            post_mean, q1, q2 = model.eval_GP(val_data=val_data, n_posterior_samples=args.n_posterior_samples)
+            post_mean, q1, q2, evaluation_dict = model.eval_GP(val_data=val_data, n_posterior_samples=args.n_posterior_samples)
 
         ax = plot_posterior_ax(ax=ax, ax_idxs=[1,2], params_list=params_list, math_params_list=math_params_list,  
             train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='GP', legend=None,
@@ -151,22 +151,17 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train
 
         pyro.clear_param_store()
-        n_test_points = 100 if filepath=='Poisson' else n_samples
+        n_test_points = 100 if filepath=='Poisson' else len(val_data['params'])
         bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, train_set=df_file_train, val_set=df_file_val, 
             input_size=len(params_list), n_hidden=args.bnn_n_hidden, n_test_points=n_test_points,
             architecture_name=args.bnn_architecture)
 
-        x_test, post_samples, post_mean, q1, q2 = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
+        x_test, post_samples, post_mean, q1, q2, evaluation_dict = bnn_smmc.run(n_epochs=args.bnn_n_epochs, lr=args.bnn_lr, 
             y_val=val_data['labels'], train_flag=False, n_posterior_samples=args.n_posterior_samples)
-
-        # ax = plot_posterior_ax(case_study=filepath, ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
-        #     x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        #     post_samples=post_samples, post_mean=post_mean, q1=q1, q2=q2, post_std=post_std, title='BNN', legend='auto')
 
         ax = plot_posterior_ax(ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
             train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='BNN', legend='auto',
             palette=palette)
-
 
         ### plot validation
 
