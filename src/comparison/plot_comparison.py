@@ -17,6 +17,7 @@ sys.path.append(".")
 from paths import *
 from BNNs.bnn import BNN_smMC
 from VIGPs.variational_GP import GPmodel
+from baselineGPs.expectation_propagation import EP
 from baselineGPs.binomial_likelihood import Binomial
 from plot_utils import plot_posterior_ax, plot_validation_ax
 from baselineGPs.utils import evaluate_GP as evaluate_Laplace_GP
@@ -85,6 +86,10 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
             model = GPy.core.GP(X=x_train, Y=y_train, kernel=kernel, inference_method=inference, likelihood=likelihood, 
                 Y_metadata=Y_metadata)
             
+        elif args.baseline_inference=='expectation_propagation':
+            inference = EP()
+            model = GPy.core.GP(X=x_train, Y=y_train, kernel=kernel, inference_method=inference, likelihood=likelihood)
+
         else:
             raise NotImplementedError
 

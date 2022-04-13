@@ -140,7 +140,6 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
             # sns.scatterplot(x=x_train_binomial.flatten(), y=y_train_binomial.flatten()/n_trials_train, ax=ax, 
             #     label='training points', marker='.', color='black')
             
-
         else:
             sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax, label='Posterior', palette=palette)
             ax.fill_between(x_test.flatten(), q1, q2, alpha=0.5)

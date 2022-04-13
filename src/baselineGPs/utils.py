@@ -22,12 +22,12 @@ def posterior_predictive(model, x, n_trials, n_posterior_samples):
 
     return post_samples
 
-def train_GP(model, x_train, y_train):
+def train_GP(model, x_train, y_train, optimizer="scg"): # scg, lbfgs, tnc
     random.seed(0)
     np.random.seed(0)
 
     start = time.time()
-    model.optimize("scg", max_iters=1000, messages=True)
+    model.optimize(optimizer=optimizer, max_iters=1000, messages=True)
     training_time = execution_time(start=start, end=time.time())
 
     print("\nTraining time =", training_time)
