@@ -18,8 +18,8 @@ from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrat
 from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
 
 sys.path.append(".")
-from GPs.binomial_likelihood import BinomialLikelihood
-from GPs.bernoulli_likelihood import BernoulliLikelihood
+from VIGPs.binomial_likelihood import BinomialLikelihood
+from VIGPs.bernoulli_likelihood import BernoulliLikelihood
 # from plot_utils import plot_posterior_ax, plot_validation_ax
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 from data_utils import normalize_columns, Poisson_observations, get_tensor_data, get_bernoulli_data, get_binomial_data

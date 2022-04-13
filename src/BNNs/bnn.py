@@ -181,7 +181,7 @@ class BNN_smMC(PyroModule):
         start = time.time()
         for j in tqdm(range(self.n_epochs)):
             for x_batch, y_batch in train_loader:
-                loss = svi.step(x_batch, y_batch)/len(x_batch)ù
+                loss = svi.step(x_batch, y_batch)/len(x_batch)
 
             if (j+1)%50==0:
                 print("Epoch ", j+1, "/", self.n_epochs, " Loss ", loss)

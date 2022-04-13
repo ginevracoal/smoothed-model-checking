@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 sys.path.append(".")
 from paths import *
 from plot_utils import plot_posterior
-from GPs.variational_GP import GPmodel
+from VIGPs.variational_GP import GPmodel
 from data_utils import normalize_columns, get_tensor_data
 
 
@@ -30,8 +30,8 @@ parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
-models_path = os.path.join("GPs", models_path)
-plots_path = os.path.join("GPs", plots_path)
+models_path = os.path.join("VIGPs", models_path)
+plots_path = os.path.join("VIGPs", plots_path)
 os.makedirs(os.path.dirname(models_path), exist_ok=True)
 os.makedirs(os.path.dirname(plots_path), exist_ok=True)
 

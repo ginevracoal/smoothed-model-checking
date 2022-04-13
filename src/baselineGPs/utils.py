@@ -7,7 +7,7 @@ import numpy as np
 sys.path.append(".")
 from gpytorch.functions import log_normal_cdf
 from baselineGPs.binomial_likelihood import Binomial
-from data_utils import normalize_columns, Poisson_observations
+from data_utils import normalize_columns, Poisson_observations, get_tensor_data
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 
 
@@ -27,17 +27,18 @@ def train_GP(model, x_train, y_train):
     np.random.seed(0)
 
     start = time.time()
-    model.optimize()
+    model.optimize("scg", max_iters=1000, messages=True)
     training_time = execution_time(start=start, end=time.time())
 
     print("\nTraining time =", training_time)
     return model, training_time
 
-def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_trials_val=None):
+def evaluate_GP(model, n_posterior_samples, n_samples, val_data=None):
     random.seed(0)
     np.random.seed(0)
 
-    if x_val is None: # Poisson case-study
+
+    if val_data is None: # Poisson case-study
 
         raise NotImplementedError
 
@@ -46,18 +47,19 @@ def evaluate_GP(model, n_posterior_samples, n_params, x_val=None, y_val=None, n_
         # n_trials_val=1 
 
     else:
-        n_val_points = len(x_val)
-    
+        x_val, y_val, n_samples, n_trials = get_tensor_data(val_data)
+
     start = time.time()
-    post_samples = posterior_predictive(model=model, x=x_val, n_trials=n_trials_val, n_posterior_samples=n_posterior_samples)
+    post_samples = posterior_predictive(model=model, x=x_val, n_trials=n_trials, n_posterior_samples=n_posterior_samples)
     evaluation_time = execution_time(start=start, end=time.time())
 
     post_samples = np.transpose(post_samples)
 
     print(f"Evaluation time = {evaluation_time}")
-
-    post_mean, post_std, q1, q2, evaluation_dict = evaluate_posterior_samples(y_val=y_val,
-        post_samples=post_samples, n_params=n_val_points, n_trials=n_trials_val)
     
+
+    post_mean, q1, q2, evaluation_dict = evaluate_posterior_samples(y_val=y_val, post_samples=post_samples, n_samples=n_samples, 
+        n_trials=n_trials)
+
     evaluation_dict.update({"evaluation_time":evaluation_time})
-    return x_val.squeeze(), post_samples, post_mean, post_std, q1, q2, evaluation_dict
+    return post_mean, q1, q2, evaluation_dict

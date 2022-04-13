@@ -16,11 +16,10 @@ import matplotlib.pyplot as plt
 sys.path.append(".")
 from paths import *
 from BNNs.bnn import BNN_smMC
-from GPs.variational_GP import GPmodel
-# from baselineGPs.binomial_likelihood import Binomial
-# from GPs.variational_GP import evaluate_GP as evaluate_var_GP
-# from baselineGPs.utils import evaluate_GP as evaluate_Laplace_GP
+from VIGPs.variational_GP import GPmodel
+from baselineGPs.binomial_likelihood import Binomial
 from plot_utils import plot_posterior_ax, plot_validation_ax
+from baselineGPs.utils import evaluate_GP as evaluate_Laplace_GP
 from data_utils import get_bernoulli_data, get_binomial_data, get_tensor_data, normalize_columns, Poisson_satisfaction_function
 
 parser = argparse.ArgumentParser()
@@ -62,58 +61,56 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         np.random.seed(0)
         torch.manual_seed(0)
 
-        # print(f"\n=== Eval baseline model on {val_filename} ===")
+        print(f"\n=== Eval baseline model on {val_filename} ===")
 
-        # with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
-        #     data = pickle.load(handle)
+        with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
+            train_data = pickle.load(handle)
 
-        # if args.gp_likelihood=='binomial':
-        #     x_train, y_train, n_samples, n_trials_train = get_binomial_data(data)
-        #     x_train_binomial, y_train_binomial = x_train, y_train
+        if args.gp_likelihood=='binomial':
+            x_train, y_train, n_samples, n_trials_train = get_binomial_data(train_data)
+            likelihood = Binomial()
+            x_train = normalize_columns(x_train).numpy()
+            y_train = y_train.unsqueeze(1).numpy()
 
-        # else:
-        #     raise NotImplementedError
+        else:
+            raise NotImplementedError
 
-        # normalized_x_train = normalize_columns(x_train).numpy()
-        # y_train = y_train.unsqueeze(1).numpy()
-
-        # Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
+        Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
         
-        # likelihood = Binomial()
-        # kernel = GPy.kern.RBF(input_dim=n_params, variance=args.baseline_variance, lengthscale=args.baseline_lengthscale)
+        likelihood = Binomial()
+        kernel = GPy.kern.RBF(input_dim=n_params, variance=args.baseline_variance, lengthscale=args.baseline_lengthscale)
 
-        # if args.baseline_inference=='laplace':
-        #     inference = GPy.inference.latent_function_inference.Laplace()
-        #     model = GPy.core.GP(X=normalized_x_train, Y=y_train, kernel=kernel, inference_method=inference, likelihood=likelihood, 
-        #         Y_metadata=Y_metadata)
+        if args.baseline_inference=='laplace':
+            inference = GPy.inference.latent_function_inference.Laplace()
+            model = GPy.core.GP(X=x_train, Y=y_train, kernel=kernel, inference_method=inference, likelihood=likelihood, 
+                Y_metadata=Y_metadata)
             
-        # else:
-        #     raise NotImplementedError
+        else:
+            raise NotImplementedError
 
-        # with open(os.path.join("baselineGPs", models_path, "gp_"+train_filename+".pkl"), 'rb') as file:
-        #     model = pickle.load(file)
+        with open(os.path.join("baselineGPs", models_path, "gp_"+train_filename+".pkl"), 'rb') as file:
+            model = pickle.load(file)
 
-        # file = open(os.path.join("baselineGPs", models_path,f"gp_{train_filename}_training_time.txt"),"r+")
-        # print(f"\nTraining time = {file.read()}")
+        file = open(os.path.join("baselineGPs", models_path,f"gp_{train_filename}_training_time.txt"),"r+")
+        print(f"\nTraining time = {file.read()}")
 
-        # if filepath=='Poisson':
+        if filepath=='Poisson':
+            raise NotImplementedError
+            # x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=None, 
+            #     y_val=None, n_trials_val=None, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
 
-        #     x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=None, 
-        #         y_val=None, n_trials_val=None, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+        else: 
 
-        # else: 
-
-        #     with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-        #         val_data = pickle.load(handle)
+            with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+                val_data = pickle.load(handle)
             
-        #     x_val, y_val, n_params, n_trials_val = build_binomial_dataframe(val_data)
+            post_mean, q1, q2, evaluation_dict = evaluate_Laplace_GP(model=model, val_data=val_data,
+                n_samples=n_samples, n_posterior_samples=args.n_posterior_samples)
 
-        #     x_test, post_samples, post_mean, post_std, q1,q2, evaluation_dict = evaluate_Laplace_GP(model=model, x_val=x_val, 
-        #         y_val=val_data['labels'], n_trials_val=n_trials_val, n_posterior_samples=args.n_posterior_samples, n_params=n_params)
+        ax = plot_posterior_ax(ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list,  
+            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='Laplace GP', legend='auto',
+            palette=palette)
 
-        # ax = plot_posterior_preds(case_study=filepath, ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list, 
-        #     x_train=x_train_binomial.flatten(), y_train=y_train_binomial.flatten()/n_trials_train, x_test=x_test, 
-        #     post_samples=post_samples, post_mean=post_mean, post_std=post_std, q1=q1, q2=q2, title='Laplace GP', legend=None)
 
         print(f"\n=== Eval GP model on {val_filename} ===")
 
@@ -130,7 +127,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         model = GPmodel(inducing_points=inducing_points, variational_distribution=args.gp_variational_distribution,
             variational_strategy=args.gp_variational_strategy, likelihood=args.gp_likelihood)
 
-        model.load(filepath=os.path.join("GPs", models_path), filename=out_filename)
+        model.load(filepath=os.path.join("VIGPs", models_path), filename=out_filename)
 
         if filepath=='Poisson':
             raise NotImplementedError
