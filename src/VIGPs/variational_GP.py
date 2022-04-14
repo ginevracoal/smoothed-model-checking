@@ -81,7 +81,6 @@ class GPmodel(ApproximateGP):
         np.random.seed(0)
         torch.manual_seed(0)
 
-
         if self.likelihood=='bernoulli':
             x_train, y_train, n_samples, n_trials = get_bernoulli_data(data)
             likelihood = BernoulliLikelihood()
@@ -127,7 +126,6 @@ class GPmodel(ApproximateGP):
         post_samples = [[torch.exp(log_normal_cdf(post_samples[j, i]))  for i in range(len(x))] \
             for j in range(n_posterior_samples)]
         post_samples = torch.tensor(post_samples)
-
         return post_samples
 
     def eval_GP(self, n_posterior_samples, val_data=None):

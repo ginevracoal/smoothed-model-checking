@@ -6,6 +6,7 @@ from GPy.util.univariate_Gaussian import std_norm_pdf, std_norm_cdf
 from GPy.likelihoods import link_functions
 from GPy.likelihoods.likelihood import Likelihood
 from scipy import special
+from gpytorch.functions import log_normal_cdf
 
 
 class Binomial(Likelihood):
@@ -25,7 +26,7 @@ class Binomial(Likelihood):
     def __init__(self, gp_link=None):
         if gp_link is None:
             gp_link = link_functions.Probit()
-            gp_link.nu = 1.
+            gp_link.nu = 10.
 
         super(Binomial, self).__init__(gp_link, 'Binomial')
 
@@ -73,7 +74,7 @@ class Binomial(Likelihood):
         t2 = np.zeros(y.shape)
         t1[y>0] = y[y>0]*np.log(inv_link_f[y>0])
         t2[Ny>0] = Ny[Ny>0]*np.log(1.-inv_link_f[Ny>0])
-        
+
         return nchoosey + t1 + t2
 
     def dlogpdf_dlink(self, inv_link_f, y, Y_metadata=None):
@@ -174,6 +175,7 @@ class Binomial(Likelihood):
         gp = gp.flatten()
         N = Y_metadata['trials']
         Ysim = np.random.binomial(N, self.gp_link.transf(gp))
+        print(Ysim.shape)
         return Ysim.reshape(orig_shape)
 
     def exact_inference_gradients(self, dL_dKdiag,Y_metadata=None):

@@ -252,6 +252,7 @@ class EPBase(InferenceMethodList):
         return input_dict
 
 class EP(EPBase, ExactGaussianInference):
+
     def inference(self, kern, X, likelihood, Y, mean_function=None, Y_metadata=None, precision=None, K=None):
         if self.always_reset and not self.loading:
             self.reset()

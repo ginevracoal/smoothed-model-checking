@@ -4,7 +4,7 @@ import numpy
 import numpy as np
 
 
-def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96, alpha1=0.05, alpha2=0.95):
+def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96, alpha1=0.025, alpha2=0.975):
 
     if y_val.shape != (n_samples, n_trials):
         raise ValueError("y_val should be bernoulli trials")
@@ -24,7 +24,7 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     assert satisfaction_prob.shape == post_mean.shape
 
     q1, q2 = np.quantile(post_samples, q=[alpha1, alpha2], axis=0)
-    assert satisfaction_prob.shape == q1.shape 
+    assert satisfaction_prob.shape == q1.shape
 
     def intervals_intersection(a,b):
         min_right = np.minimum(a[1],b[1])
