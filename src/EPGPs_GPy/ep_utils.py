@@ -26,7 +26,7 @@ def train_GP(model, x_train, y_train, optimizer="lbfgs"): # scg, lbfgs, tnc
     np.random.seed(0)
 
     start = time.time()
-    model.optimize(optimizer=optimizer, max_iters=10000, messages=True)
+    model.optimize(optimizer=optimizer, max_iters=1000, messages=True)
     training_time = execution_time(start=start, end=time.time())
 
     print("\nTraining time =", training_time)
