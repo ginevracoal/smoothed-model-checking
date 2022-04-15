@@ -41,12 +41,15 @@ class BooleanLabeler(object):
         if self.D["modelName"] == "PrGeEx":
     
             LacZ = self.extractVarAtPosFromX(experiment, 'LacZ')
+            diff_lacz = np.concatenate(([0],np.ediff1d(LacZ)))
 
-            LeftSide = LacZ-mean_experiment+0.1*mean_experiment
-            RightSide = LacZ-mean_experiment-0.1*mean_experiment
+            trajectories = np.stack([diff_lacz])
+            formula_variables = ['D']
+            #LeftSide = LacZ-mean_experiment+0.1*mean_experiment
+            #RightSide = LacZ-mean_experiment-0.1*mean_experiment
 
-            trajectories = np.stack([LeftSide, RightSide])
-            formula_variables = ['L', 'R']
+            #trajectories = np.stack([LeftSide, RightSide])
+            #formula_variables = ['L', 'R']
 
         else:
             trajectories = np.stack([self.extractVarAtPosFromX(experiment, species) for species in self.D["variables"]])

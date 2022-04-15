@@ -1,4 +1,4 @@
-def prgeex_config_details(list_params):
+def prgeex_config_details(list_params, train_flag):
 
 	D = {}
 
@@ -12,26 +12,35 @@ def prgeex_config_details(list_params):
 	D["param_space_dim"] = len(list_params)
 	D["params"] = list_params
 	D["time_step"] = 5
-	D["n_steps"] = 4200
+	D["n_steps"] = 420
 
 	if list_params == ["k2","k7"]:
 		D["params_min"] = [10,0.45]
 		D["params_max"] = [10000,450]
-		D["n_steps_param"] = 8
-		D["n_trajs"] = 1000
-		D["n_trajs_mean"] = 1000
+		if train_flag:
+			D["n_steps_param"] = 50
+			D["n_trajs"] = 50
+		else:
+			D["n_steps_param"] = 20
+			D["n_trajs"] = 1000
 	elif list_params == ["k2"]:
 		D["params_min"] = [10]
 		D["params_max"] = [100000]
-		D["n_steps_param"] = 16
-		D["n_trajs"] = 1000
-		D["n_trajs_mean"] = 1000
+		if train_flag:
+			D["n_steps_param"] = 500
+			D["n_trajs"] = 50
+		else:
+			D["n_steps_param"] = 1000
+			D["n_trajs"] = 1000
 	elif list_params == ["k7"]:
 		D["params_min"] = [0.45]
 		D["params_max"] = [4500]
-		D["n_steps_param"] = 16
-		D["n_trajs"] = 1000
-		D["n_trajs_mean"] = 1000
+		if train_flag:
+			D["n_steps_param"] = 500
+			D["n_trajs"] = 50
+		else:
+			D["n_steps_param"] = 1000
+			D["n_trajs"] = 1000
 	else:
 		print("Config with {} as parameters not defined!!".format(list_params))
 	

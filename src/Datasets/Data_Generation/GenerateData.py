@@ -32,7 +32,7 @@ def get_generator(model_name, list_params, latin_flag = False, train_flag = True
     elif model_name == "SIR":
         D = sir_config_details(list_params, train_flag)
     elif model_name == "PrGeEx":
-        D = prgeex_config_details(list_params)
+        D = prgeex_config_details(list_params, train_flag)
     elif model_name == "PRDeg":
         D = prdeg_config_details(list_params, train_flag)
     else:

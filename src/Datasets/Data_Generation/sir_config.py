@@ -26,7 +26,7 @@ def sir_config_details(list_params, train_flag):
         D["params_min"] = [0.005]
         D["params_max"] = [0.3]
         if train_flag:
-            D["n_steps_param"] = 10#500
+            D["n_steps_param"] = 500
             D["n_trajs"] = 50
         else:
             D["n_steps_param"] = 1000
