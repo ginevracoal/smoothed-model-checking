@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import norm
 from sklearn.gaussian_process.kernels import RBF
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 22})
 
 class EPupdate():
 	def __init__(self):
@@ -63,10 +64,10 @@ class smMC_GPEP(object):
 	
 
 	def make_predictions(self, x):
-	    a, b = self.latentPrediction(x)
-	    bounds = self.getBounds(a, b, 3)
-	    prob = self.getProbability(a, b)
-	    return prob, bounds[0, :], bounds[1, :]
+		a, b = self.latentPrediction(x)
+		bounds = self.getBounds(a, b, 3)
+		prob = self.getProbability(a, b)
+		return prob, bounds[0, :], bounds[1, :]
 
 	def fit(self):
 		aa, bb = self.getDefaultHyperarametersRBF()
@@ -357,7 +358,7 @@ class smMC_GPEP(object):
 		return fs, vfs
 
 	def predictive_results(self, nb_params = 1):
-		
+		print(self.testSetX.shape, self.testSetY.shape)
 		ys, lb, ub = self.make_predictions(self.testSetX)
 
 		if nb_params == 1:
@@ -366,9 +367,26 @@ class smMC_GPEP(object):
 			plt.plot(self.testSetX, ys, 'r')
 			plt.plot(self.testSetX, lb)
 			plt.scatter(self.testSetX, self.testSetY)
+			plt.tight_layout()
 			plt.savefig("pycheck_results_{}_{}.png".format(self.modelName, self.parameterName))
 			plt.close()
 		else:
-			print("UB: ", ub, ub.shape)
-			print("LB: ", lb, lb.shape)
-			print("Ypred: ", ys, ys.shape)
+			nb_points = len(ys)
+			ax_size = int(np.sqrt(nb_points))
+			xx = np.arange(ax_size)
+
+
+			fig = plt.figure()
+			h=plt.contourf(xx, xx, np.reshape(ys, (ax_size, ax_size)))
+			plt.colorbar()
+			plt.tight_layout()
+			plt.title("smMC")
+			plt.savefig("pycheck_results_{}_{}.png".format(self.modelName, self.parameterName))
+			plt.close()
+			fig = plt.figure()
+			h=plt.contourf(xx, xx, np.reshape(self.testSetY[:,0], (ax_size, ax_size)))
+			plt.colorbar()
+			plt.tight_layout()
+			plt.title("SMC")
+			plt.savefig("SMC_results_{}_{}.png".format(self.modelName, self.parameterName))
+			plt.close()

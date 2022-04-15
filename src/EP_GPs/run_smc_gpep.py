@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 
 modelName = "SIR"
-params = ["beta"]
+params = ["beta","gamma"]
 print(modelName, params)
 if len(params) == 1:
 	paramterName = params[0]
@@ -35,7 +35,7 @@ Y_test = np.expand_dims(Y_test,axis=1)
 
 smc_path = "TrainedModels/{}_{}_gpep.pickle".format(modelName,paramterName)
 
-DO_TRAIN = True
+DO_TRAIN = False
 if DO_TRAIN:
 	smc = smMC_GPEP(modelName, paramterName)
 	smc.load_train_data(X_train, Y_train, M_train)
