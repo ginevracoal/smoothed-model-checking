@@ -1,11 +1,13 @@
 """ Code adapted from: https://github.com/simonesilvetti/pyCheck
 """ 
 
+import os
 import time
 import numpy as np
 from math import erf
 from scipy.stats import norm
 # import matplotlib.pyplot as plt
+import pickle5 as pickle
 from scipy.optimize import minimize
 from sklearn.gaussian_process.kernels import RBF
 # plt.rcParams.update({'font.size': 22})
@@ -44,58 +46,62 @@ class Gauss():
 
 class smMC_GPEP(object):
 
-    def __init__(self, modelName, paramName):
-        self.modelName = modelName
-        self.parameterName = paramName
+    def __init__(self):# modelName, paramName):
+        # self.modelName = modelName
+        # self.parameterName = paramName
         self.CORRECTION_FACTOR = 1
         self.CORRECTION = 1E-4
         self.eps_damp = 0.5
 
-    def load_train_data(self, trainX, trainY, trajectoriesNumber):
-        self.trainSetX = trainX
-        self.trainSetY = trainY
-        self.trajectoriesNumber = trajectoriesNumber
+    # def load_train_data(self, x_train, trainY, trajectoriesNumber):
+    #     self.trainSetX = trainX
+    #     self.trainSetY = trainY
+    #     self.trajectoriesNumber = trajectoriesNumber
 
-    def load_test_data(self, testX, testY):
-        self.testSetX = testX
-        self.testSetY = testY
+    # def load_test_data(self, testX, testY):
+    #     self.testSetX = testX
+    #     self.testSetY = testY
 
     def getProbability(self, mean, variance):
         return norm.cdf(mean / np.sqrt(1 + variance))
 
-    def getBounds(self, mean, variance, z):
+    def getBounds(self, mean, variance, z, x_train):
         quantiles_interval = [mean - z * np.sqrt(variance),mean + z * np.sqrt(variance)]
-        bounds = norm.cdf(np.tile(1 / np.sqrt(1 + variance), (self.trainSetX.shape[1], 1)) * quantiles_interval)
+        bounds = norm.cdf(np.tile(1 / np.sqrt(1 + variance), (x_train.shape[1], 1)) * quantiles_interval)
         return bounds[0, :], bounds[1, :]
 
-    def make_predictions(self, x, z=1.96):
-        mean, variance = self.latentPrediction(x)
-        q1, q2 = self.getBounds(mean, variance, z)
+    def make_predictions(self, x_train, x_test, z=1.96):
+        mean, variance = self.latentPrediction(x_train=x_train, x_test=x_test)
+        q1, q2 = self.getBounds(mean=mean, variance=variance, z=z, x_train=x_train)
         post_mean = self.getProbability(mean, variance)
-        return prob, q1, q2
+        return post_mean, q1, q2
 
-    def fit(self):
+    def fit(self, x_train, y_train, n_trajectories):
         start = time.time()
 
-        aa, bb = self.getDefaultHyperarametersRBF()
-        objectivefunctionWrap = lambda x: self.objectivefunction(x)
+        aa, bb = self.getDefaultHyperarametersRBF(x_train, y_train)
+        objectivefunctionWrap = lambda x: self.objectivefunction(x_train, y_train, n_trajectories=n_trajectories, l=x)
         res = minimize(objectivefunctionWrap, bb, method='L-BFGS-B', bounds=((0.5 * bb, 2 * bb),))
         r = RBF(res.x)
         self.kernel = r
-        self.doTraining()
+        invC, mu_tilde, sigma_tilde = self.doTraining(x_train, y_train, n_trajectories=n_trajectories)
+        self.invC=invC
+        self.mu_tilde=mu_tilde
+        self.sigma_tilde=sigma_tilde
 
         training_time = execution_time(start=start, end=time.time())
         print("\nTraining time =", training_time)
         self.training_time = training_time
 
-    def doTraining(self):
-        gauss = self.expectationPropagation(tolerance=1e-6)
+    def doTraining(self, x_train, y_train, n_trajectories):
+        gauss = self.expectationPropagation(x_train, y_train, n_trajectories=n_trajectories, tolerance=1e-6)
         v_tilde = gauss.Term[:, 0]
         tau_tilde = gauss.Term[:, 1]
         diag_sigma_tilde = 1 / tau_tilde
-        self.mu_tilde = v_tilde * diag_sigma_tilde
-        self.sigma_tilde = np.diag(diag_sigma_tilde)
-        self.invC = np.linalg.solve(gauss.C + self.sigma_tilde, np.eye(len(self.mu_tilde)))
+        mu_tilde = v_tilde * diag_sigma_tilde
+        sigma_tilde = np.diag(diag_sigma_tilde)
+        invC = np.linalg.solve(gauss.C + sigma_tilde, np.eye(len(mu_tilde)))
+        return invC, mu_tilde, sigma_tilde
 
     def computeMarginalMoments(self, gauss, Term, logdet_LC):
         # // (repmat(Term(:,2),1,N).*Gauss.LC)
@@ -271,9 +277,11 @@ class smMC_GPEP(object):
         return -0.5 * np.log(np.pi) - log2 - 0.5 * z * z - np.log(z) + np.log(
             1 - 1 / z + 3 / z ** 4 - 15 / z ** 6 + 105 / z ** 8 - 945 / z ** 10)
 
-    def expectationPropagation(self, tolerance):
+    def expectationPropagation(self, x_train, y_train, n_trajectories, tolerance, max_iters=1000):
+
+        print("\nEP:", end="")
         gauss = Gauss()
-        p = self.kernel(self.trainSetX)
+        p = self.kernel(x_train)
         gauss.C = p
 
         gauss.C = gauss.C + self.CORRECTION * np.eye(len(gauss.C))
@@ -282,15 +290,15 @@ class smMC_GPEP(object):
         gauss_LC_diag = np.diag(gauss.LC)
         logdet_LC = 2 * np.sum(np.log(gauss_LC_diag))
         logZprior = 0.5 * logdet_LC
-        n = len(self.trainSetX)
+        n = len(x_train)
         logZterms = np.zeros(shape=(n, 1))
         logZloo = np.zeros(shape=(n, 1))
         Term = np.zeros(shape=(n, 2))
         appo, gauss = self.computeMarginalMoments(gauss, Term, logdet_LC)
 
         # Stuff related to the likelihood
-        gauss.LikPar_p = self.trainSetY * self.trajectoriesNumber
-        gauss.LikPar_q = np.ones(shape=(n, 1)) * self.trajectoriesNumber - gauss.LikPar_p
+        gauss.LikPar_p = y_train * n_trajectories
+        gauss.LikPar_q = np.ones(shape=(n, 1)) * n_trajectories - gauss.LikPar_p
         NODES = 96
         gauss.xGauss = np.zeros(shape=(NODES, 1))
         gauss.wGauss = np.zeros(shape=(NODES, 1))
@@ -300,14 +308,13 @@ class smMC_GPEP(object):
         # gauss.gauss.logwGauss.put(i, Math.log(gauss.gauss.wGauss.get(i)));
 
         # initialize cycle control
-        MaxIter = 1000
         tol = tolerance
         logZold = 0
         logZ = 2 * tol
         steps = 0
         logZappx = 0
-        while ((np.abs(logZ - logZold) > tol) & (steps < MaxIter)):
-            print("...", end="\t")
+        while ((np.abs(logZ - logZold) > tol) & (steps < max_iters)):
+            print("...", end="")
             # cycle control
             steps = steps + 1
             logZold = logZ
@@ -332,15 +339,15 @@ class smMC_GPEP(object):
         gauss.Term = Term
         return gauss
 
-    def getDefaultHyperarametersRBF(self):
-        signal = 0.5 * (np.max(self.trainSetY) - np.min(self.trainSetY))
+    def getDefaultHyperarametersRBF(self, x_train, y_train):
+        signal = 0.5 * (np.max(y_train) - np.min(x_train))
         sum = 0
-        n, dim = self.trainSetX.shape
+        n, dim = x_train.shape
         for d in range(0, dim):
             max = -float('inf')
             min = float('inf')
             for i in range(0, n):
-                curr = self.trainSetX[i][d]
+                curr = x_train[i][d]
                 if (curr > max):
                     max = curr
                 if (curr < min):
@@ -349,18 +356,18 @@ class smMC_GPEP(object):
         lengthScale = sum / dim
         return signal, lengthScale
 
-    def objectivefunction(self, l):
+    def objectivefunction(self, x_train, y_train, n_trajectories, l):
         r = RBF(l)
         self.kernel = r
-        return self.getMarginalLikelihood()
+        return self.getMarginalLikelihood(x_train, y_train, n_trajectories)
 
-    def getMarginalLikelihood(self):
-        gauss = self.expectationPropagation(1e-3)
+    def getMarginalLikelihood(self, x_train, y_train, n_trajectories):
+        gauss = self.expectationPropagation(x_train, y_train, n_trajectories, tolerance=1e-3)
         return gauss.logZ
 
-    def latentPrediction(self, Xs): # Rasmussen GPs p. 74
-        kss = np.diag(self.kernel(Xs))
-        ks = self.kernel(Xs, self.trainSetX)
+    def latentPrediction(self, x_train, x_test): # Rasmussen GPs p. 74
+        kss = np.diag(self.kernel(x_test))
+        ks = self.kernel(x_test, x_train)
         tmp = np.dot(ks, self.invC)
         fs = np.dot(tmp, self.mu_tilde)
         vfs = kss - (np.diag(np.dot(tmp, ks.transpose())))
@@ -369,7 +376,8 @@ class smMC_GPEP(object):
     def save(self, filepath, filename):
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        smc_dict = {"smc":self}
+        smc_dict = {"kernel":self.kernel, "invC":self.invC, "mu_tilde":self.mu_tilde}
+
         with open(os.path.join(filepath, filename+"_gpep.pickle"), 'wb') as handle:
             pickle.dump(smc_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -381,10 +389,15 @@ class smMC_GPEP(object):
 
         with open(os.path.join(filepath, filename+"_gpep.pickle"), 'rb') as handle:
             smc_dict = pickle.load(handle)
-        smc = smc_dict["smc"]
+
+        # smc = smc_dict["smc"]
+        self.kernel = smc_dict["kernel"]
+        self.invC = smc_dict["invC"]
+        self.mu_tilde = smc_dict["mu_tilde"]
 
         file = open(os.path.join(filepath, filename+"_training_time.txt"),"r+")
         print(f"\nTraining time = {file.read()}")
+        # return self
 
     def eval_gp(self, val_data):
 

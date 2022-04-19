@@ -37,7 +37,7 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     estimated_ci = (q1,q2)
     non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci)>0)
     val_accuracy = 100*non_empty_intersections/n_samples
-    assert val_accuracy < 100
+    assert val_accuracy <= 100
 
     val_dist = np.abs(satisfaction_prob-post_mean)
     mse = np.mean(val_dist**2)

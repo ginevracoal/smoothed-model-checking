@@ -20,7 +20,6 @@ from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVaria
 sys.path.append(".")
 from SVI_GPs.binomial_likelihood import BinomialLikelihood
 from SVI_GPs.bernoulli_likelihood import BernoulliLikelihood
-# from plot_utils import plot_posterior_ax, plot_validation_ax
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 from data_utils import normalize_columns, Poisson_observations, get_tensor_data, get_bernoulli_data, get_binomial_data
 
@@ -45,10 +44,10 @@ class GPmodel(ApproximateGP):
 
         if variational_strategy=='default':
             variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=False)
+                                                                learn_inducing_locations=True)
         elif variational_strategy=='unwhitened':
             variational_strategy = UnwhitenedVariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=False)
+                                                                learn_inducing_locations=True)
         else:
             raise NotImplementedError
 
@@ -77,7 +76,7 @@ class GPmodel(ApproximateGP):
         file.writelines(self.training_time)
         file.close()
 
-    def train_gp(self, train_data, n_epochs, lr, batch_size=1000):
+    def train_gp(self, train_data, n_epochs, lr, batch_size):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
@@ -120,16 +119,18 @@ class GPmodel(ApproximateGP):
         print("\nModel params:", self.state_dict().keys())
         self.training_time = training_time
 
-    def posterior_predictive(self, x, n_posterior_samples):
-        normalized_x = normalize_columns(x) 
+    def posterior_predictive(self, x_train, x_test, n_posterior_samples):
+        min_x, max_x, _ = normalize_columns(x_train, return_minmax=True)
+        normalized_x = normalize_columns(x_test, min_x=min_x, max_x=max_x) 
+
         posterior = self(normalized_x)
         post_samples = posterior.sample(sample_shape=torch.Size((n_posterior_samples,)))
-        post_samples = [[torch.exp(log_normal_cdf(post_samples[j, i]))  for i in range(len(x))] \
+        post_samples = [[torch.exp(log_normal_cdf(post_samples[j, i]))  for i in range(len(x_test))] \
             for j in range(n_posterior_samples)]
         post_samples = torch.tensor(post_samples)
         return post_samples
 
-    def eval_gp(self, n_posterior_samples, val_data=None):
+    def evaluate(self, train_data, n_posterior_samples, val_data=None):
 
         random.seed(0)
         np.random.seed(0)
@@ -149,10 +150,12 @@ class GPmodel(ApproximateGP):
                 # n_trials_val=1 
 
             else:
+                x_train = get_binomial_data(train_data)[0]
                 x_val, y_val, n_samples, n_trials = get_tensor_data(val_data)
 
             start = time.time()
-            post_samples = self.posterior_predictive(x=x_val, n_posterior_samples=n_posterior_samples)
+            post_samples = self.posterior_predictive(x_train=x_train, x_test=x_val, 
+                n_posterior_samples=n_posterior_samples)
             evaluation_time = execution_time(start=start, end=time.time())
             print(f"Evaluation time = {evaluation_time}")
 

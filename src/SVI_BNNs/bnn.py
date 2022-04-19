@@ -26,7 +26,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
 
 sys.path.append(".")
-from BNNs.dnn import DeterministicNetwork
+from SVI_BNNs.dnn import DeterministicNetwork
 from data_utils import Poisson_observations
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 
@@ -35,17 +35,18 @@ softplus = torch.nn.Softplus()
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, model_name, list_param_names, train_set, val_set, input_size, architecture_name='3L', 
+    def __init__(self, model_name, list_param_names, input_size, architecture_name='3L', 
         n_hidden=10, n_test_points=20):
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
         # BayesianNetwork extends PyroModule class
-        self.det_network = DeterministicNetwork(input_size=input_size, hidden_size=n_hidden, architecture_name=architecture_name)
+        self.det_network = DeterministicNetwork(input_size=input_size, hidden_size=n_hidden, 
+            architecture_name=architecture_name)
         self.name = "bayesian_network"
 
-        self.train_set_fn = train_set
-        self.val_set_fn = val_set
+        # self.train_set_fn = train_set
+        # self.val_set_fn = val_set
         self.input_size = input_size
         self.n_hidden = n_hidden
         self.output_size = 1
@@ -55,13 +56,11 @@ class BNN_smMC(PyroModule):
         self.mre_eps = 0.000001
         self.casestudy_id = self.model_name+''.join(self.param_name)
 
-    def load_train_data(self):
-        with open(self.train_set_fn, 'rb') as handle:
-            datasets_dict = pickle.load(handle)
+    def load_train_data(self, train_data):
 
-        self.X_train = datasets_dict["params"]
+        self.X_train = train_data["params"]
         
-        P_train = datasets_dict["labels"]
+        P_train = train_data["labels"]
         n_train_points, M_train = P_train.shape
 
         self.M_train = M_train
@@ -75,13 +74,11 @@ class BNN_smMC(PyroModule):
         self.X_train_scaled = -1+2*(self.X_train-self.MIN)/(self.MAX-self.MIN)
         self.T_train_scaled = np.expand_dims(self.T_train, axis=1)
 
-    def load_val_data(self):
-        with open(self.val_set_fn, 'rb') as handle:
-            datasets_dict = pickle.load(handle)
+    def load_val_data(self, val_data):
 
-        self.X_val = datasets_dict["params"]
+        self.X_val = val_data["params"]
         
-        P_val = datasets_dict["labels"]
+        P_val = val_data["labels"]
         n_val_points, M_val = P_val.shape
 
         self.M_val = M_val
@@ -160,54 +157,15 @@ class BNN_smMC(PyroModule):
         self.n_epochs = n_epochs
         self.lr = lr        
 
-    def train(self, batch_size=1000):
-        random.seed(0)
-        np.random.seed(0)
-        torch.manual_seed(0)
-
-        #adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
-        adam_params = {"lr": self.lr}
-        optim = Adam(adam_params)
-        elbo = TraceMeanField_ELBO()
-        svi = SVI(self.model, self.guide, optim, loss=elbo)
-
-        x_train = torch.FloatTensor(self.X_train_scaled)
-        y_train = torch.FloatTensor(self.T_train_scaled)
-        dataset = TensorDataset(x_train,y_train) 
-        train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
-
-        loss_history = []
-
-        start = time.time()
-        for j in tqdm(range(self.n_epochs)):
-            for x_batch, y_batch in train_loader:
-                loss = svi.step(x_batch, y_batch)/len(x_batch)
-
-            if (j+1)%50==0:
-                print("Epoch ", j+1, "/", self.n_epochs, " Loss ", loss)
-                loss_history.append(loss)
-
-        training_time = execution_time(start=start, end=time.time())
-        self.loss_history = loss_history
-
-        if self.n_epochs >= 50:
-            fig = plt.figure()
-            plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
-            plt.title("loss")
-            plt.xlabel("epochs")
-            plt.tight_layout()
-            plt.savefig(self.plot_path+"loss.png")
-            plt.close()
-
-        print("\nTraining time: ", training_time)
-        return training_time
-
-    def evaluate(self, y_val, n_posterior_samples, poisson=False):
-        # Does not work for Poisson case 
+    def evaluate(self, train_data, val_data, n_posterior_samples):
 
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)    
+
+        self.load_train_data(train_data)
+        self.load_val_data(val_data)
+        y_val=val_data["labels"]
 
         start = time.time()
 
@@ -256,52 +214,80 @@ class BNN_smMC(PyroModule):
             post_samples=T_val_bnn, n_samples=self.n_val_points, n_trials=self.M_val)
 
         evaluation_dict.update({"evaluation_time":evaluation_time})
+        return post_mean, q1, q2, evaluation_dict
 
-        return self.X_val, T_val_bnn, post_mean, q1, q2, evaluation_dict
+    def train(self, train_data, n_epochs, lr, batch_size):
 
-    def save(self, net_name = "bnn_net.pt"):
+        self.load_train_data(train_data)
+        self.set_training_options(n_epochs, lr)
+
+        print("Training...")
+        random.seed(0)
+        np.random.seed(0)
+        torch.manual_seed(0)
+
+        #adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
+        adam_params = {"lr": self.lr}
+        optim = Adam(adam_params)
+        elbo = TraceMeanField_ELBO()
+        svi = SVI(self.model, self.guide, optim, loss=elbo)
+
+        x_train = torch.FloatTensor(self.X_train_scaled)
+        y_train = torch.FloatTensor(self.T_train_scaled)
+        dataset = TensorDataset(x_train,y_train) 
+        train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
+
+        loss_history = []
+
+        start = time.time()
+
+        for j in tqdm(range(n_epochs)):
+            loss = 0
+            for x_batch, y_batch in train_loader:
+                loss += svi.step(x_batch, y_batch)
+
+            loss = loss/len(x_train)
+
+            if (j+1)%50==0:
+                print("Epoch ", j+1, "/", n_epochs, " Loss ", loss)
+                loss_history.append(loss)
+
+        training_time = execution_time(start=start, end=time.time())
+
+        self.loss_history = loss_history
+
+        print("\nTraining time: ", training_time)
+        self.training_time = training_time
+
+        return self, training_time
+
+    def save(self, filepath, filename):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         param_store = pyro.get_param_store()
         print(f"\nlearned params = {param_store}")
-        param_store.save(self.model_path+"_"+net_name)
+        param_store.save(os.path.join(filepath, filename+"_bnn.pt"))
 
-    def load(self, net_name = "bnn_net.pt"):
-        path = self.model_path+"_"+net_name
+        if self.n_epochs >= 50:
+            fig = plt.figure()
+            plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
+            plt.title("loss")
+            plt.xlabel("epochs")
+            plt.tight_layout()
+            plt.savefig(os.path.join(filepath, filename+"_loss.png"))
+            plt.close()            
+
+        file = open(os.path.join(filepath, f"bnn_{filename}_training_time.txt"),"w")
+        file.writelines(self.training_time)
+        file.close()
+
+    def load(self, filepath, filename):
+
         param_store = pyro.get_param_store()
-        param_store.load(path)
+        param_store.load(os.path.join(filepath, filename+"_bnn.pt"))
         for key, value in param_store.items():
             param_store.replace_param(key, value, value)
-        print("\nLoading ", path)
 
-    def run(self, n_epochs, lr, y_val, n_posterior_samples, identifier=1, train_flag=True):
-
-        # print("Loading data...")
-        self.load_train_data()
-        self.load_val_data()
-
-        self.set_training_options(n_epochs, lr)
-
-        fld_id = "epochs={}_lr={}_id={}".format(n_epochs,lr, identifier)
-        self.plot_path = f"BNNs/{plots_path}/BNN_Plots_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}/"
-        self.model_path = os.path.join("BNNs",models_path,f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}")
-
-        os.makedirs(self.plot_path, exist_ok=True)
-        os.makedirs(f"BNNs/{models_path}", exist_ok=True)
-
-        if train_flag:
-            print("Training...")
-            training_time = self.train()
-            print("Saving...")
-            self.save()
-
-            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}"),"w")
-            file.writelines(training_time)
-            file.close()
-
-        else:
-            self.load()
-            file = open(os.path.join(f"BNNs/{models_path}",f"BNN_{self.casestudy_id}_{self.det_network.architecture_name}_Arch_{fld_id}"),"r+")
-            print(f"\nTraining time = {file.read()}")
-
-        return self.evaluate(y_val, n_posterior_samples)
-
+        file = open(os.path.join(filepath, f"bnn_{filename}_training_time.txt"),"r+")
+        print(f"\nTraining time = {file.read()}")
+        file.close()

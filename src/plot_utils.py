@@ -1,3 +1,4 @@
+import itertools
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -115,8 +116,8 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
     sns.set_palette(palette)
     matplotlib.rc('font', **{'size':9, 'weight' : 'bold'})
 
-    x_train, y_train, n_samples, n_trials = get_binomial_data(train_data)
-    x_test, y_test, n_samples, n_trials = get_binomial_data(test_data)
+    x_train, y_train, n_samples, n_trials_train = get_binomial_data(train_data)
+    x_test, y_test, n_samples, n_trials_test = get_binomial_data(test_data)
 
     n_params = len(params_list)
 
@@ -125,7 +126,7 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
         fig, ax = plt.subplots(1, 1, figsize=(8, 5))
         
         if plot_training_points:
-            sns.scatterplot(x=x_train, y=y_train.flatten()/n_trials, ax=axis, 
+            sns.scatterplot(x=x_train, y=y_train.flatten()/n_trials_train, ax=axis, 
                 label='Training', marker='.', color='black', alpha=0.8, palette=palette, linewidth=0)
 
         if val_data is None:
@@ -156,7 +157,7 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
 
     elif n_params==2:
         
-        x_val, y_val, n_params, n_trials = get_binomial_data(train_data)
+        x_val, y_val, n_params, n_trials_val = get_binomial_data(train_data)
 
         params_couples_idxs = list(itertools.combinations(range(len(params_list)), 2))
 

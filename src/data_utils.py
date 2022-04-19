@@ -2,12 +2,20 @@ import torch
 import numpy as np 
 
 
-def normalize_columns(x, a=-1, b=1):
+def normalize_columns(x, a=-1, b=1, min_x=None, max_x=None, return_minmax=False):
     """ Normalize columns of x in [a,b] range """
-    min_x = torch.min(x, axis=0, keepdim=True)[0]
-    max_x = torch.max(x, axis=0, keepdim=True)[0]
+    if min_x is None:
+        min_x = torch.min(x, axis=0, keepdim=True)[0]
+
+    if max_x is None:
+        max_x = torch.max(x, axis=0, keepdim=True)[0]
+
     normalized_x = 2*(x-min_x)/(max_x-min_x)-1
-    return normalized_x
+
+    if return_minmax:
+        return min_x, max_x, normalized_x
+    else:
+        return normalized_x
 
 def Poisson_satisfaction_function(lam):
     if type(lam)==np.ndarray:
