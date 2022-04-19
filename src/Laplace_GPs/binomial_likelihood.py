@@ -26,7 +26,7 @@ class Binomial(Likelihood):
     def __init__(self, gp_link=None):
         if gp_link is None:
             gp_link = link_functions.Probit()
-            gp_link.nu = 10.
+            gp_link.nu = 1. # todo: check this
 
         super(Binomial, self).__init__(gp_link, 'Binomial')
 
@@ -190,6 +190,7 @@ class Binomial(Likelihood):
         """
         #Compute first integral for zeroth moment.
         #NOTE constant np.sqrt(2*pi/tau) added at the end of the function
+
         if (isinstance(self.gp_link, link_functions.Probit) or isinstance(self.gp_link, link_functions.ScaledProbit)) and (Y_metadata_i is None or int(Y_metadata_i.get('trials', 1)) == int(1)): #Special case for probit likelihood. Can be found from Riihimaki et Vehtari 2010
             if isinstance(self.gp_link, link_functions.ScaledProbit):
                 nu = self.gp_link.nu
@@ -216,13 +217,13 @@ class Binomial(Likelihood):
             return super(Binomial, self).moments_match_ep(obs,tau,v,Y_metadata_i)
     
     def variational_expectations(self, Y, m, v, gh_points=None, Y_metadata=None):
+
         if isinstance(self.gp_link, link_functions.Probit):
 
             if gh_points is None:
                 gh_x, gh_w = self._gh_points()
             else:
                 gh_x, gh_w = gh_points
-
 
             gh_w = gh_w / np.sqrt(np.pi)
             shape = m.shape

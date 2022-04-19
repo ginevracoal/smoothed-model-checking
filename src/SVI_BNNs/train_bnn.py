@@ -9,7 +9,7 @@ import pickle5 as pickle
 
 sys.path.append(".")
 from BNNs.bnn import BNN_smMC
-from paths import data_paths, data_path
+from paths import case_studies, data_path
 
 random.seed(0)
 np.random.seed(0)
@@ -28,7 +28,7 @@ args = parser.parse_args()
 
 
 
-for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
+for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
     df_file_train = os.path.join(os.path.join(data_path, filepath, train_filename+".pickle"))
     df_file_val = os.path.join(os.path.join(data_path, filepath, val_filename+".pickle")) if val_filename else df_file_train

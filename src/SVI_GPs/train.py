@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 sys.path.append(".")
 from paths import *
 from plot_utils import plot_posterior
-from VIGPs.variational_GP import GPmodel
+from SVI_GPs.variational_GP import GPmodel
 from data_utils import normalize_columns, get_tensor_data
 
 
@@ -30,13 +30,13 @@ parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
-models_path = os.path.join("VIGPs", models_path)
-plots_path = os.path.join("VIGPs", plots_path)
-os.makedirs(os.path.dirname(models_path), exist_ok=True)
-os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+models_path = os.path.join("SVI_GPs", models_path)
+plots_path = os.path.join("SVI_GPs", plots_path)
+# os.makedirs(os.path.dirname(models_path), exist_ok=True)
+# os.makedirs(os.path.dirname(plots_path), exist_ok=True)
 
 
-for filepath, train_filename, val_filename, params_list, math_params_list in data_paths:
+for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
     print(f"\n=== Training {train_filename} ===")
 
@@ -54,7 +54,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         model.load(filepath=models_path, filename=out_filename)
 
     else:
-        model.train_GP(train_data=train_data, n_epochs=n_epochs, lr=args.lr)
+        model.train_gp(train_data=train_data, n_epochs=n_epochs, lr=args.lr)
         model.save(filepath=models_path, filename=out_filename)
 
     print(f"\n=== Validation {val_filename} ===")
@@ -76,7 +76,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
         with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
             val_data = pickle.load(handle)
         
-        post_mean, q1, q2, evaluation_dict = model.eval_GP(val_data=val_data, n_posterior_samples=args.n_posterior_samples)
+        post_mean, q1, q2, evaluation_dict = model.eval_gp(val_data=val_data, n_posterior_samples=args.n_posterior_samples)
 
         if len(params_list)<=2:
 

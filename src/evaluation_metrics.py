@@ -20,7 +20,7 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     assert satisfaction_prob.max()<=1
 
     post_mean = post_samples.mean(0).squeeze()
-    post_std = post_samples.std(0).squeeze()
+    # post_std = post_samples.std(0).squeeze()
     assert satisfaction_prob.shape == post_mean.shape
 
     q1, q2 = np.quantile(post_samples, q=[alpha1, alpha2], axis=0)
@@ -41,7 +41,7 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
 
     val_dist = np.abs(satisfaction_prob-post_mean)
     mse = np.mean(val_dist**2)
-    mre = np.mean(val_dist/satisfaction_prob+0.000001)
+    # mre = np.mean(val_dist/satisfaction_prob+0.000001)
 
     ci_uncertainty_area = q2-q1 #2*z*post_std
     avg_uncertainty_area = np.mean(ci_uncertainty_area)
@@ -51,8 +51,26 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     print(f"Validation accuracy: {val_accuracy} %")
     print(f"Average uncertainty area:  {avg_uncertainty_area}\n")
 
-    evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "mre":mre, 
-                       "avg_uncertainty_area":avg_uncertainty_area}
+    evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "avg_uncertainty_area":avg_uncertainty_area}
+
+    return post_mean, q1, q2, evaluation_dict
+
+def evaluate_ep_gp(model, val_data):
+    raise NotImplementedError
+
+    x_val = val_data["params"]
+    y_val = val_data["labels"]
+
+    post_mean, q1, q2 = model.make_predictions(x_val)
+
+    ci_uncertainty_area = q2-q1
+    avg_uncertainty_area = np.mean(ci_uncertainty_area)
+
+    # print(f"Mean squared error: {mse}")
+    # print(f"Validation accuracy: {val_accuracy} %")
+    print(f"Average uncertainty area:  {avg_uncertainty_area}\n")
+
+    evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "avg_uncertainty_area":avg_uncertainty_area}
 
     return post_mean, q1, q2, evaluation_dict
 
