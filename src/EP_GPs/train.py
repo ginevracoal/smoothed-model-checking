@@ -20,47 +20,44 @@ plots_path = os.path.join("EP_GPs", plots_path)
 
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
+    print(f"\n=== Training {train_filename} ===")
+
+    out_filename = f"ep_gp_{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
+
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)
     
     paramterName = params_list[0] if len(params_list)==1 else ''.join(params_list)
 
-    x_train = train_data["params"]
-    p_train = train_data["labels"]
-    n_train_points, m_train = p_train.shape
-    y_train = np.sum(p_train,axis=1)/m_train
-    y_train = np.expand_dims(y_train,axis=1)
-
-    with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-        val_data = pickle.load(handle)
-        
-    x_val = val_data["params"]
-    p_test = val_data["labels"]       
-    n_test_points, m_test = p_test.shape
-    y_test = np.sum(p_test,axis=1)/m_test
-    y_test = np.expand_dims(y_test,axis=1)
-
     smc = smMC_GPEP()
 
-    if args.load:
+    x_train, y_train, n_samples_train, n_trials_train = smc.transform_data(train_data)
 
-        smc.load(filepath=models_path, filename=train_filename)
-        post_mean, q1, q2 = smc.make_predictions(x_train=x_train, x_test=x_val)
-        # post_mean, q1, q2, evaluation_dict = smc.eval_gp(val_data)
+    if args.load:
+        smc.load(filepath=models_path, filename=out_filename)
 
     else:
-
         smc.fit(x_train, y_train, m_train)
-        smc.save(filepath=models_path, filename=train_filename)
+        smc.save(filepath=models_path, filename=out_filename)
 
-        post_mean, q1, q2 = smc.make_predictions(x_train=x_train, x_test=x_val)
-        # post_mean, q1, q2, evaluation_dict = smc.eval_gp(val_data)
+    print(f"\n=== Validation {val_filename} ===")
 
+    try:
+        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+            val_data = pickle.load(handle)
+            
+        x_val, y_val, n_samples_val, n_trials_val = smc.transform_data(val_data)
 
-    if len(params_list)<=2:
+        post_mean, q1, q2, evaluation_dict = smc.eval_gp(x_train=x_train, x_val=x_val, y_val=val_data['labels'], 
+            n_samples=n_samples_val, n_trials=n_trials_val)
 
-        fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
-            test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
+        if len(params_list)<=2:
 
-        os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-        fig.savefig(plots_path+f"{val_filename}.png")
+            fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
+                test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
+
+            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+            fig.savefig(plots_path+f"{out_filename}.png")
+
+    except:
+        print("Validation set not available")

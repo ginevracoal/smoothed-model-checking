@@ -30,11 +30,6 @@ class GPmodel(ApproximateGP):
     def __init__(self, inducing_points, likelihood='binomial', variational_distribution='cholesky', 
         variational_strategy='default'):
 
-        # if len(inducing_points)>MAX_N_INDUCING_PTS:
-        #     torch.manual_seed(0)
-        #     idxs = torch.tensor(random.sample(range(len(inducing_points)), MAX_N_INDUCING_PTS))
-        #     inducing_points = inducing_points[idxs]
-
         if variational_distribution=='cholesky':
             variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
         elif variational_distribution=='meanfield':

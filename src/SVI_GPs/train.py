@@ -25,8 +25,8 @@ parser.add_argument("--likelihood", default='binomial', type=str, help='Choose b
 parser.add_argument("--variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--variational_strategy", default='unwhitened', type=str, help="Variational strategy")
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
-parser.add_argument("--batch_size", default=1000, type=int, help="")
-parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
+parser.add_argument("--batch_size", default=500, type=int, help="")
+parser.add_argument("--n_epochs", default=2000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
@@ -39,10 +39,11 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== Training {train_filename} ===")
 
+    out_filename = f"svi_gp_{train_filename}_epochs={args.n_epochs}_lr={args.lr}_batch={args.batch_size}"
+
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)
 
-    out_filename = f"{args.likelihood}_{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
     inducing_points = normalize_columns(get_tensor_data(train_data)[0])
 
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.variational_distribution,
@@ -57,22 +58,27 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== Validation {val_filename} ===")
 
-    if filepath=='Poisson':
+    try:
 
-        raise NotImplementedError
+        if filepath=='Poisson':
 
-    else: 
+            raise NotImplementedError
 
-        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-            val_data = pickle.load(handle)
-        
-        post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
-            n_posterior_samples=args.n_posterior_samples)
+        else: 
 
-        if len(params_list)<=2:
+            with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+                val_data = pickle.load(handle)
+            
+            post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
+                n_posterior_samples=args.n_posterior_samples)
 
-            fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
-                test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
+            if len(params_list)<=2:
 
-            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-            fig.savefig(plots_path+f"{out_filename}.png")
+                fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
+                    test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
+
+                os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+                fig.savefig(plots_path+f"{out_filename}.png")
+
+    except:
+        print("Validation set not available")

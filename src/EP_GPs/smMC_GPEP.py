@@ -5,13 +5,12 @@ import os
 import time
 import numpy as np
 from math import erf
-from scipy.stats import norm
-# import matplotlib.pyplot as plt
 import pickle5 as pickle
+from scipy.stats import norm
 from scipy.optimize import minimize
+from evaluation_metrics import execution_time, intervals_intersection
 from sklearn.gaussian_process.kernels import RBF
-# plt.rcParams.update({'font.size': 22})
-from evaluation_metrics import execution_time, evaluate_ep_gp
+
 
 class EPupdate():
     def __init__(self):
@@ -61,6 +60,14 @@ class smMC_GPEP(object):
     # def load_test_data(self, testX, testY):
     #     self.testSetX = testX
     #     self.testSetY = testY
+
+    def transform_data(self, data):
+        x = data["params"]
+        p = data["labels"]
+        n_samples, n_trials = p.shape
+        y = np.sum(p,axis=1)/n_trials
+        y = np.expand_dims(y,axis=1)
+        return x, y, n_samples, n_trials
 
     def getProbability(self, mean, variance):
         return norm.cdf(mean / np.sqrt(1 + variance))
@@ -378,7 +385,7 @@ class smMC_GPEP(object):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         smc_dict = {"kernel":self.kernel, "invC":self.invC, "mu_tilde":self.mu_tilde}
 
-        with open(os.path.join(filepath, filename+"_gpep.pickle"), 'wb') as handle:
+        with open(os.path.join(filepath, filename+".pickle"), 'wb') as handle:
             pickle.dump(smc_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         file = open(os.path.join(filepath, filename+"_training_time.txt"),"w")
@@ -387,7 +394,7 @@ class smMC_GPEP(object):
 
     def load(self, filepath, filename):
 
-        with open(os.path.join(filepath, filename+"_gpep.pickle"), 'rb') as handle:
+        with open(os.path.join(filepath, filename+".pickle"), 'rb') as handle:
             smc_dict = pickle.load(handle)
 
         # smc = smc_dict["smc"]
@@ -399,10 +406,40 @@ class smMC_GPEP(object):
         print(f"\nTraining time = {file.read()}")
         # return self
 
-    def eval_gp(self, val_data):
+    def eval_gp(self, x_train, x_val, y_val, n_samples, n_trials, z=1.96):
 
         start = time.time()
-        post_mean, q1, q2, evaluation_dict = evaluate_ep_gp(model=self, val_data=val_data)
+
+        if y_val.shape != (n_samples, n_trials):
+            raise ValueError("y_val should be bernoulli trials")
+
+        satisfaction_prob = y_val.mean(1).flatten()
+        assert satisfaction_prob.min()>=0
+        assert satisfaction_prob.max()<=1
+
+        post_mean, q1, q2 = self.make_predictions(x_train=x_train, x_test=x_val)
+        assert satisfaction_prob.shape == post_mean.shape
+        assert satisfaction_prob.shape == q1.shape
+
+        sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val]
+        val_std = np.sqrt(sample_variance).flatten()
+        validation_ci = (satisfaction_prob-(z*val_std)/np.sqrt(n_trials),satisfaction_prob+(z*val_std)/np.sqrt(n_trials))
+        estimated_ci = (q1,q2)
+        non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci)>0)
+        val_accuracy = 100*non_empty_intersections/n_samples
+        assert val_accuracy <= 100
+
+        val_dist = np.abs(satisfaction_prob-post_mean)
+        mse = np.mean(val_dist**2)
+        ci_uncertainty_area = q2-q1
+        avg_uncertainty_area = np.mean(ci_uncertainty_area)
+
+        print(f"Mean squared error: {mse}")
+        print(f"Validation accuracy: {val_accuracy} %")
+        print(f"Average uncertainty area:  {avg_uncertainty_area}\n")
+        evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "avg_uncertainty_area":avg_uncertainty_area}
+
+        evaluation_time = execution_time(start=start, end=time.time())
         print(f"Evaluation time = {evaluation_time}")
         evaluation_dict.update({"evaluation_time":evaluation_time})
 

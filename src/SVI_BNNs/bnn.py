@@ -229,7 +229,7 @@ class BNN_smMC(PyroModule):
         #adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
         adam_params = {"lr": self.lr}
         optim = Adam(adam_params)
-        elbo = TraceMeanField_ELBO()
+        elbo = Trace_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
 
         x_train = torch.FloatTensor(self.X_train_scaled)
@@ -266,7 +266,7 @@ class BNN_smMC(PyroModule):
 
         param_store = pyro.get_param_store()
         print(f"\nlearned params = {param_store}")
-        param_store.save(os.path.join(filepath, filename+"_bnn.pt"))
+        param_store.save(os.path.join(filepath, filename+".pt"))
 
         if self.n_epochs >= 50:
             fig = plt.figure()
@@ -277,17 +277,17 @@ class BNN_smMC(PyroModule):
             plt.savefig(os.path.join(filepath, filename+"_loss.png"))
             plt.close()            
 
-        file = open(os.path.join(filepath, f"bnn_{filename}_training_time.txt"),"w")
+        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"w")
         file.writelines(self.training_time)
         file.close()
 
     def load(self, filepath, filename):
 
         param_store = pyro.get_param_store()
-        param_store.load(os.path.join(filepath, filename+"_bnn.pt"))
+        param_store.load(os.path.join(filepath, filename+".pt"))
         for key, value in param_store.items():
             param_store.replace_param(key, value, value)
 
-        file = open(os.path.join(filepath, f"bnn_{filename}_training_time.txt"),"r+")
+        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"r+")
         print(f"\nTraining time = {file.read()}")
         file.close()
