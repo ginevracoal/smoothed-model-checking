@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from gpytorch.models import ApproximateGP
 from gpytorch.functions import log_normal_cdf
 from torch.utils.data import TensorDataset, DataLoader
-from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy
+from gpytorch.variational import VariationalStrategy, UnwhitenedVariationalStrategy, BatchDecoupledVariationalStrategy
 from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVariationalDistribution
 
 sys.path.append(".")
@@ -28,7 +28,7 @@ from data_utils import normalize_columns, Poisson_observations, get_tensor_data,
 class GPmodel(ApproximateGP):
 
     def __init__(self, inducing_points, likelihood='binomial', variational_distribution='cholesky', 
-        variational_strategy='default'):
+        variational_strategy='default', learn_inducing_locations=False):
 
         if variational_distribution=='cholesky':
             variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
@@ -39,10 +39,13 @@ class GPmodel(ApproximateGP):
 
         if variational_strategy=='default':
             variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=True)
+                                                                learn_inducing_locations=learn_inducing_locations)
         elif variational_strategy=='unwhitened':
             variational_strategy = UnwhitenedVariationalStrategy(self, inducing_points, variational_distribution, 
-                                                                learn_inducing_locations=True)
+                                                                learn_inducing_locations=learn_inducing_locations)
+        elif variational_strategy=='batchdecoupled':
+            variational_strategy = BatchDecoupledVariationalStrategy(self, inducing_points, variational_distribution, 
+                                                                learn_inducing_locations=learn_inducing_locations)
         else:
             raise NotImplementedError
 
@@ -71,6 +74,15 @@ class GPmodel(ApproximateGP):
         file.writelines(self.training_time)
         file.close()
 
+        if self.n_epochs >= 50:
+            fig = plt.figure()
+            plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
+            plt.title("loss")
+            plt.xlabel("epochs")
+            plt.tight_layout()
+            plt.savefig(os.path.join(filepath, filename+"_loss.png"))
+            plt.close()   
+
     def train_gp(self, train_data, n_epochs, lr, batch_size):
         random.seed(0)
         np.random.seed(0)
@@ -96,7 +108,10 @@ class GPmodel(ApproximateGP):
         elbo = gpytorch.mlls.VariationalELBO(likelihood, self, num_data=len(x_train))
 
         print()
+
+        loss_history = []
         start = time.time()
+
         for i in tqdm(range(n_epochs)):
             for x_batch, y_batch in train_loader:
                 optimizer.zero_grad()
@@ -107,12 +122,16 @@ class GPmodel(ApproximateGP):
 
             if i % 10 == 0:
                 print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
+                loss_history.append(loss.detach().numpy())
 
         training_time = execution_time(start=start, end=time.time())
         print("\nTraining time =", training_time)
 
         print("\nModel params:", self.state_dict().keys())
         self.training_time = training_time
+
+        self.loss_history = loss_history
+        self.n_epochs = n_epochs
 
     def posterior_predictive(self, x_train, x_test, n_posterior_samples):
         min_x, max_x, _ = normalize_columns(x_train, return_minmax=True)
@@ -132,7 +151,6 @@ class GPmodel(ApproximateGP):
         torch.manual_seed(0)
 
         self.eval()    
-        # self.likelihood.eval()
 
         with torch.no_grad():
 

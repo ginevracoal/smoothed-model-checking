@@ -180,7 +180,6 @@ class BNN_smMC(PyroModule):
 
             else:
                 x_val_t = torch.FloatTensor(self.X_val_scaled)
-                # y_val = torch.tensor(self.T_val_scaled.flatten())
                 y_val = torch.tensor(y_val)
 
             x_test_t = []
@@ -238,7 +237,6 @@ class BNN_smMC(PyroModule):
         train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
         loss_history = []
-
         start = time.time()
 
         for j in tqdm(range(n_epochs)):
@@ -268,18 +266,18 @@ class BNN_smMC(PyroModule):
         print(f"\nlearned params = {param_store}")
         param_store.save(os.path.join(filepath, filename+".pt"))
 
-        if self.n_epochs >= 50:
-            fig = plt.figure()
-            plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
-            plt.title("loss")
-            plt.xlabel("epochs")
-            plt.tight_layout()
-            plt.savefig(os.path.join(filepath, filename+"_loss.png"))
-            plt.close()            
-
         file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"w")
         file.writelines(self.training_time)
         file.close()
+
+        # if self.n_epochs >= 50:
+        #     fig = plt.figure()
+        #     plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
+        #     plt.title("loss")
+        #     plt.xlabel("epochs")
+        #     plt.tight_layout()
+        #     plt.savefig(os.path.join(filepath, filename+"_loss.png"))
+        #     plt.close()          
 
     def load(self, filepath, filename):
 

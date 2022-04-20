@@ -19,11 +19,11 @@ torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--load", default=False, type=eval)
-parser.add_argument("--architecture", default='3L', type=str)
+parser.add_argument("--architecture", default='2L', type=str, help="NN architecture")
 parser.add_argument("--batch_size", default=500, type=int, help="")
 parser.add_argument("--n_epochs", default=10000, type=int, help="Number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--n_hidden", default=10, type=int)
+parser.add_argument("--n_hidden", default=10, type=int, help="Size of hidden layers")
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 

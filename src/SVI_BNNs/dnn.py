@@ -45,7 +45,6 @@ class DeterministicNetwork(nn.Module):
                          nn.Sigmoid()
                          )
 
-        # possibilità: togliere sigmoid da qui e metterla nel model della bnn
         self.name = "deterministic_network"
         self.architecture_name = architecture_name
 

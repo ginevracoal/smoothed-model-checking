@@ -45,21 +45,10 @@ class Gauss():
 
 class smMC_GPEP(object):
 
-    def __init__(self):# modelName, paramName):
-        # self.modelName = modelName
-        # self.parameterName = paramName
+    def __init__(self):
         self.CORRECTION_FACTOR = 1
         self.CORRECTION = 1E-4
         self.eps_damp = 0.5
-
-    # def load_train_data(self, x_train, trainY, trajectoriesNumber):
-    #     self.trainSetX = trainX
-    #     self.trainSetY = trainY
-    #     self.trajectoriesNumber = trajectoriesNumber
-
-    # def load_test_data(self, testX, testY):
-    #     self.testSetX = testX
-    #     self.testSetY = testY
 
     def transform_data(self, data):
         x = data["params"]
@@ -311,8 +300,6 @@ class smMC_GPEP(object):
         gauss.wGauss = np.zeros(shape=(NODES, 1))
         gauss.xGauss, gauss.wGauss = self.gausshermite(NODES, gauss.xGauss, gauss.wGauss)
         gauss.logwGauss = np.log(gauss.wGauss)
-        # for (int i = 0; i < gauss.gauss.logwGauss.getLength(); i++)
-        # gauss.gauss.logwGauss.put(i, Math.log(gauss.gauss.wGauss.get(i)));
 
         # initialize cycle control
         tol = tolerance
@@ -326,9 +313,7 @@ class smMC_GPEP(object):
             steps = steps + 1
             logZold = logZ
             cavGauss = self.computeCavities(gauss, -Term)
-            #
-            # // [Term, logZterms, logZloo] = EPupdate(cavGauss, gauss.LikFunc, y,
-            #                                 // Term, eps_damp);
+
             update = self.ep_update(cavGauss, Term, gauss.LikPar_p, gauss.LikPar_q, gauss.xGauss, gauss.logwGauss)
             Term = update.TermNew
             logZterms = update.logZterms
@@ -404,7 +389,6 @@ class smMC_GPEP(object):
 
         file = open(os.path.join(filepath, filename+"_training_time.txt"),"r+")
         print(f"\nTraining time = {file.read()}")
-        # return self
 
     def eval_gp(self, x_train, x_val, y_val, n_samples, n_trials, z=1.96):
 
@@ -445,36 +429,3 @@ class smMC_GPEP(object):
 
         return post_mean, q1, q2, evaluation_dict
 
-    # def predictive_results(self, nb_params = 1):
-    #     print(self.testSetX.shape, self.testSetY.shape)
-    #     ys, lb, ub = self.make_predictions(self.testSetX)
-
-    #     if nb_params == 1:
-    #         fig = plt.figure()
-    #         plt.plot(self.testSetX, ub)
-    #         plt.plot(self.testSetX, ys, 'r')
-    #         plt.plot(self.testSetX, lb)
-    #         plt.scatter(self.testSetX, self.testSetY)
-    #         plt.tight_layout()
-    #         plt.savefig("pycheck_results_{}_{}.png".format(self.modelName, self.parameterName))
-    #         plt.close()
-    #     else:
-    #         nb_points = len(ys)
-    #         ax_size = int(np.sqrt(nb_points))
-    #         xx = np.arange(ax_size)
-
-
-    #         fig = plt.figure()
-    #         h=plt.contourf(xx, xx, np.reshape(ys, (ax_size, ax_size)))
-    #         plt.colorbar()
-    #         plt.tight_layout()
-    #         plt.title("smMC")
-    #         plt.savefig("pycheck_results_{}_{}.png".format(self.modelName, self.parameterName))
-    #         plt.close()
-    #         fig = plt.figure()
-    #         h=plt.contourf(xx, xx, np.reshape(self.testSetY[:,0], (ax_size, ax_size)))
-    #         plt.colorbar()
-    #         plt.tight_layout()
-    #         plt.title("SMC")
-    #         plt.savefig("SMC_results_{}_{}.png".format(self.modelName, self.parameterName))
-    #         plt.close()

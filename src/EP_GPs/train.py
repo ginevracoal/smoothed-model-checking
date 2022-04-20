@@ -12,7 +12,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
 parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
 models_path = os.path.join("EP_GPs", models_path)
@@ -27,7 +26,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)
     
-    paramterName = params_list[0] if len(params_list)==1 else ''.join(params_list)
+    # paramterName = params_list[0] if len(params_list)==1 else ''.join(params_list)
 
     smc = smMC_GPEP()
 

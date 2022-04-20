@@ -22,11 +22,11 @@ torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
-parser.add_argument("--variational_distribution", default='cholesky', type=str, help="Variational distribution")
-parser.add_argument("--variational_strategy", default='unwhitened', type=str, help="Variational strategy")
+parser.add_argument("--variational_distribution", default='cholesky', type=str, help="Variational distribution: cholesky, meanfield")
+parser.add_argument("--variational_strategy", default='default', type=str, help="Variational strategy: default, unwhitened, batchdecoupled")
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
-parser.add_argument("--batch_size", default=500, type=int, help="")
-parser.add_argument("--n_epochs", default=2000, type=int, help="Max number of training iterations")
+parser.add_argument("--batch_size", default=500, type=int, help="Batch size")
+parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
@@ -39,7 +39,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== Training {train_filename} ===")
 
-    out_filename = f"svi_gp_{train_filename}_epochs={args.n_epochs}_lr={args.lr}_batch={args.batch_size}"
+    out_filename = f"svi_gp_{train_filename}_epochs={args.n_epochs}_lr={args.lr}_batch={args.batch_size}_{args.variational_distribution}_{args.variational_strategy}"
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)
