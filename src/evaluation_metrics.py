@@ -25,7 +25,6 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
 
     post_mean = post_samples.mean(0).squeeze()
     # post_std = post_samples.std(0).squeeze()
-    print(satisfaction_prob.shape, post_mean.shape)
     assert satisfaction_prob.shape == post_mean.shape
 
     q1, q2 = np.quantile(post_samples, q=[alpha1, alpha2], axis=0)
@@ -58,5 +57,5 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
 def execution_time(start, end):
     hours, rem = divmod(end - start, 3600)
     minutes, seconds = divmod(rem, 60)
-    time = f"{int(hours):0>2}:{int(minutes):0>2}:{int(seconds):0>2}"
+    time = f"{int(hours):0>2}:{int(minutes):0>2}:{int(seconds):05.4f}"
     return time

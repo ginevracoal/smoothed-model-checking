@@ -61,9 +61,9 @@ def plot_posterior_ax(ax, ax_idxs, params_list, math_params_list, train_data, te
     return ax
 
 def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, val_data=None, z=1.96,
-    plot_validation_ci=False, val_points_ci=50):
+    plot_validation_ci=True, val_points_ci=30):
 
-    x_val, y_val, n_samples, n_trials = get_binomial_data(val_data)
+    x_val, y_val, n_samples, n_trials_val = get_binomial_data(val_data)
     n_params = len(params_list)
 
     if n_params==1:
@@ -79,7 +79,8 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
             x_val, y_val_bernoulli = val_data['params'], val_data['labels']
 
             if plot_validation_ci:
-                idxs = np.random.randint(0, n_samples, size=val_points_ci)
+                idxs = np.linspace(0,n_samples-1,val_points_ci).astype(int)
+                # idxs = np.random.randint(0, n_samples, size=val_points_ci)
                 x_val = x_val[idxs]
                 y_val_bernoulli = y_val_bernoulli[idxs]
 
@@ -92,7 +93,8 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
                     legend = 'auto' if idx==len(ax)-1 else None
                     sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', 
                         legend=legend, palette=palette,  s=15)
-                    ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+                    ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', elinewidth=1,
+                        label='Validation')
 
             else:
                 p = y_val_bernoulli.mean(1).flatten()
@@ -119,7 +121,7 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
 
 
 def plot_posterior(params_list, math_params_list, train_data, test_data, post_mean, q1, q2, val_data=None, z=1.96,
-    plot_training_points=False, plot_validation_ci=False, val_points_ci=50):
+    plot_training_points=False, plot_validation_ci=False, val_points_ci=30):
 
     palette = sns.color_palette("magma_r", 3)
     sns.set_style("darkgrid")
@@ -159,7 +161,7 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
             x_val, y_val_bernoulli = val_data['params'], val_data['labels']
 
             if plot_validation_ci:
-                idxs = np.random.randint(0, n_samples, size=val_points_ci)
+                idxs = np.linspace(0,n_samples-1,val_points_ci).astype(int)
                 x_val = x_val[idxs]
                 y_val_bernoulli = y_val_bernoulli[idxs]
 

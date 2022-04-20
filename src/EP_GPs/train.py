@@ -26,8 +26,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)
     
-    # paramterName = params_list[0] if len(params_list)==1 else ''.join(params_list)
-
     smc = smMC_GPEP()
 
     x_train, y_train, n_samples_train, n_trials_train = smc.transform_data(train_data)

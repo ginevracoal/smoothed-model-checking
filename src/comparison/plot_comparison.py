@@ -28,7 +28,7 @@ parser.add_argument("--svi_gp_variational_strategy", default='default', type=str
 parser.add_argument("--svi_gp_batch_size", default=500, type=int, help="Batch size")
 parser.add_argument("--svi_gp_n_epochs", default=2000, type=int, help="Number of training iterations")
 parser.add_argument("--svi_gp_lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--svi_bnn_architecture", default='2L', type=str, help="NN architecture")
+parser.add_argument("--svi_bnn_architecture", default='3L', type=str, help="NN architecture")
 parser.add_argument("--svi_bnn_batch_size", default=500, type=int, help="Batch size")
 parser.add_argument("--svi_bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
 parser.add_argument("--svi_bnn_lr", default=0.01, type=float, help="Learning rate")
@@ -76,6 +76,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     smc = smMC_GPEP()
     smc.load(filepath=os.path.join("EP_GPs", models_path), filename=out_filename)
 
+    x_train, y_train, n_samples_train, n_trials_train = smc.transform_data(train_data)
     x_val, y_val, n_samples_val, n_trials_val = smc.transform_data(val_data)
     post_mean, q1, q2, evaluation_dict = smc.eval_gp(x_train=x_train, x_val=x_val, y_val=val_data['labels'], 
         n_samples=n_samples_val, n_trials=n_trials_val)
@@ -83,7 +84,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     if n_params<=2:
 
         ax = plot_posterior_ax(ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list,  
-            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='EP GP', legend='auto',
+            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='EP GP', legend=None,
             palette=palette)
 
     print(f"\n=== Eval SVI GP model on {val_filename} ===")
@@ -106,12 +107,13 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== Eval SVI BNN model on {val_filename} ===")
 
-    # pyro.clear_param_store()
+    pyro.clear_param_store()
 
     out_filename = f"svi_bnn_{train_filename}_epochs={args.svi_bnn_n_epochs}_lr={args.svi_bnn_lr}_batch={args.svi_bnn_batch_size}_hidden={args.svi_bnn_n_hidden}"
 
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, 
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
+    bnn_smmc.load(filepath=os.path.join("SVI_BNNs", models_path), filename=out_filename)
 
     post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
         n_posterior_samples=args.n_posterior_samples)
