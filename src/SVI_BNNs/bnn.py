@@ -96,7 +96,8 @@ class BNN_smMC(PyroModule):
         # set Gaussian priors on the weights of self.det_network
         for key, value in self.det_network.state_dict().items():
             loc = torch.zeros_like(value)
-            scale = torch.ones_like(value)#/value.size(dim=0)
+            # scale = torch.ones_like(value)#/value.size(dim=0)
+            scale = torch.ones_like(value)/value.size(dim=0)
             prior = Normal(loc=loc, scale=scale)
             priors.update({str(key):prior})
 
@@ -225,8 +226,8 @@ class BNN_smMC(PyroModule):
         np.random.seed(0)
         torch.manual_seed(0)
 
-        #adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
-        adam_params = {"lr": self.lr}
+        adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
+        # adam_params = {"lr": self.lr}
         optim = Adam(adam_params)
         elbo = Trace_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
@@ -270,14 +271,14 @@ class BNN_smMC(PyroModule):
         file.writelines(self.training_time)
         file.close()
 
-        # if self.n_epochs >= 50:
-        #     fig = plt.figure()
-        #     plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
-        #     plt.title("loss")
-        #     plt.xlabel("epochs")
-        #     plt.tight_layout()
-        #     plt.savefig(os.path.join(filepath, filename+"_loss.png"))
-        #     plt.close()          
+        if self.n_epochs >= 50:
+            fig = plt.figure()
+            plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
+            plt.title("loss")
+            plt.xlabel("epochs")
+            plt.tight_layout()
+            plt.savefig(os.path.join(filepath, filename+"_loss.png"))
+            plt.close()          
 
     def load(self, filepath, filename):
 

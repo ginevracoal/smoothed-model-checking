@@ -60,17 +60,17 @@ class GPmodel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
     def load(self, filepath, filename):
-        state_dict = torch.load(os.path.join(filepath, "gp_state_"+filename+".pth"))
+        state_dict = torch.load(os.path.join(filepath, filename+".pth"))
         self.load_state_dict(state_dict)
 
-        file = open(os.path.join(filepath, f"gp_{filename}_training_time.txt"),"r+")
+        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"r+")
         print(f"\nTraining time = {file.read()}")
 
     def save(self, filepath, filename):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        torch.save(self.state_dict(), os.path.join(filepath, "gp_state_"+filename+".pth"))
+        torch.save(self.state_dict(), os.path.join(filepath, filename+".pth"))
 
-        file = open(os.path.join(filepath, f"gp_{filename}_training_time.txt"),"w")
+        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"w")
         file.writelines(self.training_time)
         file.close()
 
@@ -120,7 +120,7 @@ class GPmodel(ApproximateGP):
                 loss.backward()
                 optimizer.step()
 
-            if i % 10 == 0:
+            if i % 50 == 0:
                 print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
                 loss_history.append(loss.detach().numpy())
 

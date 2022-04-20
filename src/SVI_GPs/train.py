@@ -26,9 +26,9 @@ parser.add_argument("--variational_distribution", default='cholesky', type=str, 
 parser.add_argument("--variational_strategy", default='default', type=str, help="Variational strategy: default, unwhitened, batchdecoupled")
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
 parser.add_argument("--batch_size", default=500, type=int, help="Batch size")
-parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
+parser.add_argument("--n_epochs", default=2000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
 models_path = os.path.join("SVI_GPs", models_path)

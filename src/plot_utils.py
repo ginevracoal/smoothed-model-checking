@@ -60,7 +60,8 @@ def plot_posterior_ax(ax, ax_idxs, params_list, math_params_list, train_data, te
 
     return ax
 
-def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, val_data=None, z=1.96):
+def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, val_data=None, z=1.96,
+    plot_validation_ci=False, val_points_ci=50):
 
     x_val, y_val, n_samples, n_trials = get_binomial_data(val_data)
     n_params = len(params_list)
@@ -74,20 +75,30 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
                     label='true satisfaction',  legend=legend, palette=palette)
 
         else:
+
             x_val, y_val_bernoulli = val_data['params'], val_data['labels']
-            p = y_val_bernoulli.mean(1).flatten()
 
-            sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
-            std = np.sqrt(sample_variance).flatten()
+            if plot_validation_ci:
+                idxs = np.random.randint(0, n_samples, size=val_points_ci)
+                x_val = x_val[idxs]
+                y_val_bernoulli = y_val_bernoulli[idxs]
 
-            n = n_trials
-            errors = (z*std)/np.sqrt(n)
+                p = y_val_bernoulli.mean(1).flatten()
+                sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
+                std = np.sqrt(sample_variance).flatten()
+                errors = (z*std)/np.sqrt(n_trials_val)
 
-            for idx in range(len(ax)):
-                legend = 'auto' if idx==len(ax)-1 else None
-                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', 
-                    legend=legend, palette=palette,  s=15)
-                # ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+                for idx in range(len(ax)):
+                    legend = 'auto' if idx==len(ax)-1 else None
+                    sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', 
+                        legend=legend, palette=palette,  s=15)
+                    ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+
+            else:
+                p = y_val_bernoulli.mean(1).flatten()
+
+                for idx in range(len(ax)):
+                    sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', palette=palette, s=15)
 
     elif n_params==2:
 
@@ -108,7 +119,7 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
 
 
 def plot_posterior(params_list, math_params_list, train_data, test_data, post_mean, q1, q2, val_data=None, z=1.96,
-    plot_training_points=False):
+    plot_training_points=False, plot_validation_ci=False, val_points_ci=50):
 
     palette = sns.color_palette("magma_r", 3)
     sns.set_style("darkgrid")
@@ -144,15 +155,26 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
         else:
             sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax, label='Posterior', palette=palette)
             ax.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
-
+            
             x_val, y_val_bernoulli = val_data['params'], val_data['labels']
-            p = y_val_bernoulli.mean(1).flatten()
-            sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val]
-            std = np.sqrt(sample_variance).flatten()
-            errors = (z*std)/np.sqrt(n_trials_val)
 
-            sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Validation', palette=palette, s=15)
-            # ax.errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+            if plot_validation_ci:
+                idxs = np.random.randint(0, n_samples, size=val_points_ci)
+                x_val = x_val[idxs]
+                y_val_bernoulli = y_val_bernoulli[idxs]
+
+                p = y_val_bernoulli.mean(1).flatten()
+                sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
+                std = np.sqrt(sample_variance).flatten()
+                errors = (z*std)/np.sqrt(n_trials_val)
+
+                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Validation', palette=palette, s=15)
+                ax.errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+
+            else:
+                p = y_val_bernoulli.mean(1).flatten()
+                
+                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Validation', palette=palette, s=15)
 
     elif n_params==2:
         

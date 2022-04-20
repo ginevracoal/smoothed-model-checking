@@ -19,12 +19,12 @@ torch.manual_seed(0)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--load", default=False, type=eval)
-parser.add_argument("--architecture", default='2L', type=str, help="NN architecture")
+parser.add_argument("--architecture", default='3L', type=str, help="NN architecture")
 parser.add_argument("--batch_size", default=500, type=int, help="")
 parser.add_argument("--n_epochs", default=10000, type=int, help="Number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--n_hidden", default=10, type=int, help="Size of hidden layers")
-parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_hidden", default=30, type=int, help="Size of hidden layers")
+parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
 
@@ -52,23 +52,23 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== Validation {val_filename} ===")
 
-    try:
+    # try:
 
-        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-            val_data = pickle.load(handle)
+    with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+        val_data = pickle.load(handle)
 
-        post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
-            n_posterior_samples=args.n_posterior_samples)
+    post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
+        n_posterior_samples=args.n_posterior_samples)
 
-        if len(params_list)<=2:
+    if len(params_list)<=2:
 
-            fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
-                test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
+        fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
+            test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
 
-            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-            fig.savefig(plots_path+f"{out_filename}.png")
+        os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+        fig.savefig(plots_path+f"{out_filename}.png")
 
-    except:
-        print("Validation set not available")
+    # except:
+    #     print("Validation set not available")
 
     pyro.clear_param_store()
