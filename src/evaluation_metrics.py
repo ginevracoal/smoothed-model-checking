@@ -42,7 +42,7 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     mse = np.mean(val_dist**2)
     # mre = np.mean(val_dist/satisfaction_prob+0.000001)
 
-    ci_uncertainty_area = q2-q1 #2*z*post_std
+    ci_uncertainty_area = q2-q1
     avg_uncertainty_area = np.mean(ci_uncertainty_area)
 
     print(f"Mean squared error: {mse}")

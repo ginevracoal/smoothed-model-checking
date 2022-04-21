@@ -11,7 +11,6 @@ import seaborn as sns
 import pickle5 as pickle
 import matplotlib.pyplot as plt
 
-sys.path.append(".")
 from paths import *
 from SVI_BNNs.bnn import BNN_smMC
 from EP_GPs.smMC_GPEP import smMC_GPEP
@@ -74,7 +73,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}_lr={args.ep_gp_lr}"
 
     smc = smMC_GPEP()
-    smc.load(filepath=os.path.join("EP_GPs", models_path), filename=out_filename)
+    smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)
 
     x_train, y_train, n_samples_train, n_trials_train = smc.transform_data(train_data)
     x_val, y_val, n_samples_val, n_trials_val = smc.transform_data(val_data)
@@ -94,7 +93,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     inducing_points = normalize_columns(get_tensor_data(train_data)[0])
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.svi_gp_variational_distribution,
         variational_strategy=args.svi_gp_variational_strategy, likelihood=args.svi_gp_likelihood)
-    model.load(filepath=os.path.join("SVI_GPs", models_path), filename=out_filename)
+    model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename)
         
     post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
         n_posterior_samples=args.n_posterior_samples)
@@ -109,11 +108,11 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     pyro.clear_param_store()
 
-    out_filename = f"svi_bnn_{train_filename}_epochs={args.svi_bnn_n_epochs}_lr={args.svi_bnn_lr}_batch={args.svi_bnn_batch_size}_hidden={args.svi_bnn_n_hidden}"
+    out_filename = f"svi_bnn_{train_filename}_epochs={args.svi_bnn_n_epochs}_lr={args.svi_bnn_lr}_batch={args.svi_bnn_batch_size}_hidden={args.svi_bnn_n_hidden}_{args.svi_bnn_architecture}"
 
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, 
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
-    bnn_smmc.load(filepath=os.path.join("SVI_BNNs", models_path), filename=out_filename)
+    bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename)
 
     post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
         n_posterior_samples=args.n_posterior_samples)
@@ -133,7 +132,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
         plt.tight_layout()
         plt.close()
-        os.makedirs(os.path.join("comparison", plots_path), exist_ok=True)
+        os.makedirs(os.path.join(plots_path), exist_ok=True)
 
         plot_filename = train_filename if val_filename is None else val_filename
-        fig.savefig(os.path.join("comparison", plots_path, f"{plot_filename}.png"))
+        fig.savefig(os.path.join(plots_path, f"{plot_filename}.png"))

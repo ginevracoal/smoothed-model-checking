@@ -14,12 +14,12 @@ parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of tr
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 args = parser.parse_args()
 
-models_path = os.path.join("EP_GPs", models_path)
-plots_path = os.path.join("EP_GPs", plots_path)
+plots_path = os.path.join(plots_path, "EP_GPs/")
+models_path = os.path.join(models_path, "EP_GPs/")
 
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
-    print(f"\n=== Training {train_filename} ===")
+    print(f"\n=== EP GP Training {train_filename} ===")
 
     out_filename = f"ep_gp_{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
 
@@ -37,7 +37,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         smc.fit(x_train, y_train, m_train)
         smc.save(filepath=models_path, filename=out_filename)
 
-    print(f"\n=== Validation {val_filename} ===")
+    print(f"\n=== EP GP Validation {val_filename} ===")
 
     try:
         with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:

@@ -5,6 +5,7 @@
 
 venv/
 data/
+src/out/
 
 *plots/
 *models/

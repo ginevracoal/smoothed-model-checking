@@ -171,7 +171,7 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
                 errors = (z*std)/np.sqrt(n_trials_val)
 
                 sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Validation', palette=palette, s=15)
-                ax.errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', label='Validation')
+                ax.errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', elinewidth=1, label='Validation')
 
             else:
                 p = y_val_bernoulli.mean(1).flatten()

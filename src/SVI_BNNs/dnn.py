@@ -29,7 +29,8 @@ class DeterministicNetwork(nn.Module):
 
             self.model = nn.Sequential(
                          nn.Linear(input_size, hidden_size),
-                         nn.LeakyReLU(),
+                         # nn.LeakyReLU(),
+                         nn.Tanh(),
                          nn.Linear(hidden_size, output_size),
                          nn.Sigmoid()
                          )
@@ -38,9 +39,26 @@ class DeterministicNetwork(nn.Module):
 
             self.model = nn.Sequential(
                          nn.Linear(input_size, hidden_size),
-                         nn.LeakyReLU(),
+                         # nn.LeakyReLU(),
+                         nn.Tanh(),
                          nn.Linear(hidden_size, hidden_size),
-                         nn.LeakyReLU(),
+                         # nn.LeakyReLU(),
+                         nn.Tanh(),
+                         nn.Linear(hidden_size, output_size),
+                         nn.Sigmoid()
+                         )
+
+        elif architecture_name=='4L':
+
+            self.model = nn.Sequential(
+                         nn.Linear(input_size, hidden_size),
+                         # nn.LeakyReLU(),
+                         nn.Tanh(),
+                         nn.Linear(hidden_size, hidden_size),
+                         nn.Tanh(),
+                         nn.Linear(hidden_size, hidden_size),
+                         # nn.LeakyReLU(),
+                         nn.Tanh(),
                          nn.Linear(hidden_size, output_size),
                          nn.Sigmoid()
                          )

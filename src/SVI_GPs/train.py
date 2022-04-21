@@ -31,13 +31,12 @@ parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
-models_path = os.path.join("SVI_GPs", models_path)
-plots_path = os.path.join("SVI_GPs", plots_path)
-
+plots_path = os.path.join(plots_path, "SVI_GPs/")
+models_path = os.path.join(models_path, "SVI_GPs/")
 
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
-    print(f"\n=== Training {train_filename} ===")
+    print(f"\n=== SVI GP Training {train_filename} ===")
 
     out_filename = f"svi_gp_{train_filename}_epochs={args.n_epochs}_lr={args.lr}_batch={args.batch_size}_{args.variational_distribution}_{args.variational_strategy}"
 
@@ -56,29 +55,22 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         model.train_gp(train_data=train_data, n_epochs=args.n_epochs, lr=args.lr, batch_size=args.batch_size)
         model.save(filepath=models_path, filename=out_filename)
 
-    print(f"\n=== Validation {val_filename} ===")
+    print(f"\n=== SVI GP Validation {val_filename} ===")
 
     try:
+        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+            val_data = pickle.load(handle)
+        
+        post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
+            n_posterior_samples=args.n_posterior_samples)
 
-        if filepath=='Poisson':
+        if len(params_list)<=2:
 
-            raise NotImplementedError
+            fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
+                test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
 
-        else: 
-
-            with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-                val_data = pickle.load(handle)
-            
-            post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
-                n_posterior_samples=args.n_posterior_samples)
-
-            if len(params_list)<=2:
-
-                fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
-                    test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
-
-                os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-                fig.savefig(plots_path+f"{out_filename}.png")
+            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+            fig.savefig(plots_path+f"{out_filename}.png")
 
     except:
         print("Validation set not available")

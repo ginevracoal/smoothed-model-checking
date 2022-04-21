@@ -21,22 +21,22 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--load", default=False, type=eval)
 parser.add_argument("--architecture", default='3L', type=str, help="NN architecture")
 parser.add_argument("--batch_size", default=500, type=int, help="")
-parser.add_argument("--n_epochs", default=10000, type=int, help="Number of training iterations")
+parser.add_argument("--n_epochs", default=1000, type=int, help="Number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--n_hidden", default=10, type=int, help="Size of hidden layers")
+parser.add_argument("--n_hidden", default=60, type=int, help="Size of hidden layers")
 parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
 
 
-plots_path = os.path.join("SVI_BNNs", plots_path)
-models_path = os.path.join("SVI_BNNs", models_path)
+plots_path = os.path.join(plots_path, "SVI_BNNs/")
+models_path = os.path.join(models_path, "SVI_BNNs/")
 
 
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
-    print(f"\n=== Training {train_filename} ===")
+    print(f"\n=== SVI BNN Training {train_filename} ===")
 
-    out_filename = f"svi_bnn_{train_filename}_epochs={args.n_epochs}_lr={args.lr}_batch={args.batch_size}_hidden={args.n_hidden}"
+    out_filename = f"svi_bnn_{train_filename}_epochs={args.n_epochs}_lr={args.lr}_batch={args.batch_size}_hidden={args.n_hidden}_{args.architecture}"
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)
@@ -50,7 +50,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         bnn_smmc.train(train_data=train_data, n_epochs=args.n_epochs, lr=args.lr, batch_size=args.batch_size)
         bnn_smmc.save(filepath=models_path, filename=out_filename)
 
-    print(f"\n=== Validation {val_filename} ===")
+    print(f"\n=== SVI BNN Validation {val_filename} ===")
 
     try:
 
@@ -59,8 +59,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
         post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
             n_posterior_samples=args.n_posterior_samples)
-
-        print(post_mean)
 
         if len(params_list)<=2:
 
