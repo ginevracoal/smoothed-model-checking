@@ -17,50 +17,37 @@ warnings.filterwarnings('ignore')
 
 class DeterministicNetwork(nn.Module):
   
-    def __init__(self, input_size, hidden_size, architecture_name):
+    def __init__(self, input_size, hidden_size, architecture_name, activation_function='leaky'):
 
         # initialize nn.Module
         super(DeterministicNetwork, self).__init__()
 
         output_size = 1
-      
-        # architecture
+
+        if activation_function=='leaky':
+            activation = nn.LeakyReLU
+
+        elif activation_function=='tanh':
+            activation = nn.Tanh
+
         if architecture_name=='2L':
 
             self.model = nn.Sequential(
                          nn.Linear(input_size, hidden_size),
-                         # nn.LeakyReLU(),
-                         nn.Tanh(),
+                         activation(),
                          nn.Linear(hidden_size, output_size),
-                         nn.Sigmoid()
+                         # nn.Sigmoid()
                          )
 
         elif architecture_name=='3L':
 
             self.model = nn.Sequential(
                          nn.Linear(input_size, hidden_size),
-                         # nn.LeakyReLU(),
-                         nn.Tanh(),
+                         activation(),
                          nn.Linear(hidden_size, hidden_size),
-                         # nn.LeakyReLU(),
-                         nn.Tanh(),
+                         activation(),
                          nn.Linear(hidden_size, output_size),
-                         nn.Sigmoid()
-                         )
-
-        elif architecture_name=='4L':
-
-            self.model = nn.Sequential(
-                         nn.Linear(input_size, hidden_size),
-                         # nn.LeakyReLU(),
-                         nn.Tanh(),
-                         nn.Linear(hidden_size, hidden_size),
-                         nn.Tanh(),
-                         nn.Linear(hidden_size, hidden_size),
-                         # nn.LeakyReLU(),
-                         nn.Tanh(),
-                         nn.Linear(hidden_size, output_size),
-                         nn.Sigmoid()
+                         # nn.Sigmoid()
                          )
 
         self.name = "deterministic_network"

@@ -28,7 +28,9 @@ from data_utils import normalize_columns, Poisson_observations, get_tensor_data,
 class GPmodel(ApproximateGP):
 
     def __init__(self, inducing_points, likelihood='binomial', variational_distribution='cholesky', 
-        variational_strategy='default', learn_inducing_locations=False):
+        variational_strategy='default'):#, learn_inducing_locations=True):
+        
+        learn_inducing_locations = True if len(inducing_points) > 2000 else False
 
         if variational_distribution=='cholesky':
             variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
@@ -96,6 +98,9 @@ class GPmodel(ApproximateGP):
             x_train, y_train, n_samples, n_trials = get_binomial_data(train_data)
             likelihood = BinomialLikelihood()
 
+        else:
+            raise AttributeError
+
         self.train()
         likelihood.train()
         likelihood.n_trials = n_trials
@@ -152,19 +157,19 @@ class GPmodel(ApproximateGP):
 
         self.eval()    
 
+        if val_data is None: # Poisson case-study
+
+            raise NotImplementedError
+
+            # n_val_points = 100
+            # x_val, y_val = Poisson_observations(n_val_points)
+            # n_trials_val=1 
+
+        else:
+            x_train = get_binomial_data(train_data)[0]
+            x_val, y_val, n_samples, n_trials = get_tensor_data(val_data)
+
         with torch.no_grad():
-
-            if val_data is None: # Poisson case-study
-
-                raise NotImplementedError
-
-                # n_val_points = 100
-                # x_val, y_val = Poisson_observations(n_val_points)
-                # n_trials_val=1 
-
-            else:
-                x_train = get_binomial_data(train_data)[0]
-                x_val, y_val, n_samples, n_trials = get_tensor_data(val_data)
 
             start = time.time()
             post_samples = self.posterior_predictive(x_train=x_train, x_test=x_val, 

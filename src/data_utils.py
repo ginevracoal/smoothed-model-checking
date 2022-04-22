@@ -54,7 +54,7 @@ def get_tensor_data(data, verbose=False):
 def get_bernoulli_data(data, verbose=False):
 
     x_data, y_data, n_samples, n_trials = get_tensor_data(data, verbose=verbose)
-    params = np.repeat(x_data, n_trials, axis=0)
+    x_data = np.repeat(x_data, n_trials, axis=0)
     y_data = y_data.flatten()
 
     return x_data, y_data, n_samples, n_trials

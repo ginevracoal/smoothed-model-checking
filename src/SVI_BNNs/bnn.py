@@ -18,16 +18,17 @@ import matplotlib.pyplot as plt
 import torch.nn.functional as F
 from pyro.optim import Adam, SGD
 from sklearn import preprocessing
+import torch.nn.functional as nnf
 from itertools import combinations
 from torch.autograd import Variable
 from paths import models_path, plots_path
-from pyro.distributions import Normal, Binomial
 from torch.utils.data import TensorDataset, DataLoader
+from pyro.distributions import Normal, Binomial, Bernoulli
 from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
 
 sys.path.append(".")
+from data_utils import *
 from SVI_BNNs.dnn import DeterministicNetwork
-from data_utils import Poisson_observations
 from evaluation_metrics import execution_time, evaluate_posterior_samples
 
 softplus = torch.nn.Softplus()
@@ -35,8 +36,9 @@ softplus = torch.nn.Softplus()
 
 class BNN_smMC(PyroModule):
 
-    def __init__(self, model_name, list_param_names, input_size, architecture_name='3L', 
-        n_hidden=10, n_test_points=20):
+    def __init__(self, model_name, list_param_names, likelihood, input_size, architecture_name, n_hidden, 
+        n_test_points=20):
+
         # initialize PyroModule
         super(BNN_smMC, self).__init__()
         
@@ -45,8 +47,7 @@ class BNN_smMC(PyroModule):
             architecture_name=architecture_name)
         self.name = "bayesian_network"
 
-        # self.train_set_fn = train_set
-        # self.val_set_fn = val_set
+        self.likelihood = likelihood
         self.input_size = input_size
         self.n_hidden = n_hidden
         self.output_size = 1
@@ -56,39 +57,6 @@ class BNN_smMC(PyroModule):
         self.mre_eps = 0.000001
         self.casestudy_id = self.model_name+''.join(self.param_name)
 
-    def load_train_data(self, train_data):
-
-        self.X_train = train_data["params"]
-        
-        P_train = train_data["labels"]
-        n_train_points, M_train = P_train.shape
-
-        self.M_train = M_train
-        self.n_training_points = n_train_points
-        self.T_train = np.sum(P_train,axis=1)
-        xmax = np.max(self.X_train, axis = 0)
-        xmin = np.min(self.X_train, axis = 0)
-        self.MAX = xmax
-        self.MIN = xmin
-
-        self.X_train_scaled = -1+2*(self.X_train-self.MIN)/(self.MAX-self.MIN)
-        self.T_train_scaled = np.expand_dims(self.T_train, axis=1)
-
-    def load_val_data(self, val_data):
-
-        self.X_val = val_data["params"]
-        
-        P_val = val_data["labels"]
-        n_val_points, M_val = P_val.shape
-
-        self.M_val = M_val
-        self.n_val_points = n_val_points
-        self.T_val = np.sum(P_val,axis=1)
-        
-        self.X_val_scaled = -1+2*(self.X_val-self.MIN)/(self.MAX-self.MIN)
-        
-        self.T_val_scaled = self.T_val
-
     def model(self, x_data, y_data):
 
         priors = {}
@@ -96,8 +64,8 @@ class BNN_smMC(PyroModule):
         # set Gaussian priors on the weights of self.det_network
         for key, value in self.det_network.state_dict().items():
             loc = torch.zeros_like(value)
-            # scale = torch.ones_like(value)#/value.size(dim=0)
-            scale = torch.ones_like(value)/value.size(dim=0)
+            scale = torch.ones_like(value)
+            # scale = torch.ones_like(value)/value.size(dim=0)
             prior = Normal(loc=loc, scale=scale)
             priors.update({str(key):prior})
 
@@ -108,8 +76,16 @@ class BNN_smMC(PyroModule):
     
         # samples are conditionally independent w.r.t. the observed data
         lhat = lifted_module(x_data) # out.shape = (batch_size, num_classes)
-        
-        pyro.sample("obs", Binomial(total_count=self.M_train, probs=lhat), obs=y_data)
+        lhat = nnf.sigmoid(lhat)
+
+        if self.likelihood=="binomial":
+            pyro.sample("obs", Binomial(total_count=self.n_trials_train, probs=lhat), obs=y_data)
+
+        elif self.likelihood=="bernoulli":
+            pyro.sample("obs", Bernoulli(probs=lhat), obs=y_data)
+
+        else:
+            raise AttributeError
 
     def guide(self, x_data, y_data=None):
 
@@ -131,10 +107,10 @@ class BNN_smMC(PyroModule):
 
         # compute predictions on `x_data`
         lhat = lifted_module(x_data)
+        lhat = nnf.sigmoid(lhat)
         return lhat
-
     
-    def forward(self, inputs, n_samples=10):
+    def forward(self, inputs, n_samples=100):
         """ Compute predictions on `inputs`. 
         `n_samples` is the number of samples from the posterior distribution.
         If `avg_prediction` is True, it returns the average prediction on 
@@ -143,7 +119,8 @@ class BNN_smMC(PyroModule):
 
         preds = []
         # take multiple samples
-        for _ in range(n_samples):         
+        for i in range(n_samples):    
+            pyro.set_rng_seed(i)     
             guide_trace = poutine.trace(self.guide).get_trace(inputs)
             preds.append(guide_trace.nodes['_RETURN']['value'])
         
@@ -153,89 +130,75 @@ class BNN_smMC(PyroModule):
         
         return t_hats, t_mean, t_std
     
-    def set_training_options(self, n_epochs, lr):
-
-        self.n_epochs = n_epochs
-        self.lr = lr        
-
     def evaluate(self, train_data, val_data, n_posterior_samples):
 
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)    
 
-        self.load_train_data(train_data)
-        self.load_val_data(val_data)
-        y_val=val_data["labels"]
+        if self.model_name == 'Poisson':
+            raise NotImplementedError
 
-        start = time.time()
+        else:
+            x_train = get_binomial_data(train_data)[0]
+            x_val, _, n_samples, n_trials = get_tensor_data(val_data)
 
-        with torch.no_grad():
+            min_x, max_x, _ = normalize_columns(x_train, return_minmax=True)
+            x_val = normalize_columns(x_val, min_x=min_x, max_x=max_x) 
+            y_val=val_data["labels"]
 
-            if self.model_name == 'Poisson':
+            # print(x_val[:5], y_val[:5], x_val.shape, y_val.shape)
 
-                raise NotImplementedError
+        with torch.no_grad():   
 
-                # x_val_t, y_val = Poisson_observations(n_posterior_samples)
-                # y_val = y_val.flatten()
+            start = time.time()
+            post_samples, post_mean, post_std = self.forward(x_val, n_posterior_samples)
+            evaluation_time = execution_time(start=start, end=time.time())
+            print(f"Evaluation time = {evaluation_time}")
 
-            else:
-                x_val_t = torch.FloatTensor(self.X_val_scaled)
-                y_val = torch.tensor(y_val)
-
-            x_test_t = []
-            x_test_unscaled_t = []
-            for col_idx in range(self.input_size):
-                single_param_values = self.X_val_scaled[:,col_idx]
-                single_param_values_unscaled = self.X_val[:,col_idx]
-                x_test_t.append(torch.linspace(single_param_values.min(), single_param_values.max(), self.n_test_points))
-                x_test_unscaled_t.append(torch.linspace(single_param_values_unscaled.min(), single_param_values_unscaled.max(), self.n_test_points))
-            x_test_t = torch.stack(x_test_t, dim=1)
-
-            if self.input_size>1:
-                x_test_cart_t = torch.cartesian_prod(*[x_test_t[:,i] for i in range(x_test_t.shape[1])])
-
-            x_test = x_test_t.numpy()
-            x_test_unscaled = torch.stack(x_test_unscaled_t, dim=1).numpy()
-            
-            if self.input_size == 1:
-                T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_t)
-            else: 
-                T_test_bnn, test_mean_pred, test_std_pred = self.forward(x_test_cart_t)
-
-            T_val_bnn, val_mean_pred, val_std_pred = self.forward(x_val_t)
-        
-        evaluation_time = execution_time(start=start, end=time.time())
-        print(f"Evaluation time = {evaluation_time}")
-
-        T_val_bnn = T_val_bnn.squeeze()
+        # print(post_samples.shape)
+        # post_samples = post_samples.squeeze()
+        # print(post_samples.shape)
 
         post_mean, q1, q2 , evaluation_dict = evaluate_posterior_samples(y_val=y_val,
-            post_samples=T_val_bnn, n_samples=self.n_val_points, n_trials=self.M_val)
+            post_samples=post_samples, n_samples=n_samples, n_trials=n_trials)
 
         evaluation_dict.update({"evaluation_time":evaluation_time})
         return post_mean, q1, q2, evaluation_dict
 
-    def train(self, train_data, n_epochs, lr, batch_size):
+    def train(self, train_data, n_epochs, lr, batch_size, device="cpu"):
 
-        self.load_train_data(train_data)
-        self.set_training_options(n_epochs, lr)
+        if self.likelihood=='bernoulli':
+            x_train, y_train, n_samples, n_trials_train = get_bernoulli_data(train_data)
+            
+        elif self.likelihood=='binomial':
+            x_train, y_train, n_samples, n_trials_train = get_binomial_data(train_data)
+
+        else:
+            raise AttributeError
+
+        self.n_trials_train = n_trials_train
+        x_train = normalize_columns(x_train)
+        y_train = y_train.unsqueeze(1) # check this
+        # print(x_train[:5], y_train[:5], x_train.shape, y_train.shape)
+
+        self.to(device)
+        x_train = x_train.to(device)
+        y_train = y_train.to(device)
+
+        dataset = TensorDataset(x_train, y_train) 
+        train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
         print("Training...")
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
 
-        adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
-        # adam_params = {"lr": self.lr}
+        # adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
+        adam_params = {"lr": lr}
         optim = Adam(adam_params)
         elbo = Trace_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
-
-        x_train = torch.FloatTensor(self.X_train_scaled)
-        y_train = torch.FloatTensor(self.T_train_scaled)
-        dataset = TensorDataset(x_train,y_train) 
-        train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
         loss_history = []
         start = time.time()
@@ -254,10 +217,10 @@ class BNN_smMC(PyroModule):
         training_time = execution_time(start=start, end=time.time())
 
         self.loss_history = loss_history
+        self.n_epochs = n_epochs
 
         print("\nTraining time: ", training_time)
         self.training_time = training_time
-
         return self, training_time
 
     def save(self, filepath, filename):
