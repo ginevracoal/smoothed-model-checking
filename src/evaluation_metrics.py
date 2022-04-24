@@ -14,10 +14,10 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
         raise ValueError("y_val should be bernoulli trials")
 
     if type(post_samples)==torch.Tensor:
-        post_samples = post_samples.detach().numpy()
+        post_samples = post_samples.cpu().detach().numpy()
 
     if type(y_val)==torch.Tensor:
-        y_val = y_val.detach().numpy()
+        y_val = y_val.cpu().detach().numpy()
 
     satisfaction_prob = y_val.mean(1).flatten()
     assert satisfaction_prob.min()>=0
@@ -25,7 +25,7 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
 
     post_mean = post_samples.mean(0).squeeze()
     # post_std = post_samples.std(0).squeeze()
-    print(satisfaction_prob.shape, post_mean.shape)
+    # print(satisfaction_prob.shape, post_mean.shape)
     assert satisfaction_prob.shape == post_mean.shape
 
     q1, q2 = np.quantile(post_samples, q=[alpha1, alpha2], axis=0)

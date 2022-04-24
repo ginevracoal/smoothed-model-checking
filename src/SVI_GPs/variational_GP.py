@@ -28,9 +28,13 @@ from data_utils import normalize_columns, Poisson_observations, get_tensor_data,
 class GPmodel(ApproximateGP):
 
     def __init__(self, inducing_points, likelihood='binomial', variational_distribution='cholesky', 
-        variational_strategy='default'):#, learn_inducing_locations=True):
+        variational_strategy='default', learn_inducing_locations=False):
         
-        learn_inducing_locations = True if len(inducing_points) > 2000 else False
+        learn_inducing_locations = True if len(inducing_points) > 1000 else False
+
+        if len(inducing_points)>1000:
+            idxs = np.linspace(0,len(inducing_points)-1,1000).astype(int)
+            inducing_points = inducing_points[idxs]
 
         if variational_distribution=='cholesky':
             variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
@@ -91,7 +95,7 @@ class GPmodel(ApproximateGP):
         torch.manual_seed(0)
 
         if self.likelihood=='bernoulli':
-            x_train, y_train, n_samples, n_trials = get_bernoulli_data(data)
+            x_train, y_train, n_samples, n_trials = get_bernoulli_data(train_data)
             likelihood = BernoulliLikelihood()
 
         elif self.likelihood=='binomial':
@@ -120,7 +124,7 @@ class GPmodel(ApproximateGP):
         for i in tqdm(range(n_epochs)):
             for x_batch, y_batch in train_loader:
                 optimizer.zero_grad()
-                output = self(x_batch)
+                output = self(x_batch) # var_strategy (x_batch)
                 loss = -elbo(output, y_batch)
                 loss.backward()
                 optimizer.step()

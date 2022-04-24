@@ -30,6 +30,7 @@ parser.add_argument("--n_epochs", default=2000, type=int, help="Max number of tr
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 args = parser.parse_args()
+print(args)
 
 plots_path = os.path.join(plots_path, "SVI_GPs/")
 models_path = os.path.join(models_path, "SVI_GPs/")

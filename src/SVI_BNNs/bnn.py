@@ -63,9 +63,9 @@ class BNN_smMC(PyroModule):
     
         # set Gaussian priors on the weights of self.det_network
         for key, value in self.det_network.state_dict().items():
-            loc = torch.zeros_like(value)
-            scale = torch.ones_like(value)
-            # scale = torch.ones_like(value)/value.size(dim=0)
+            loc = value #torch.zeros_like(value)
+            # scale = torch.ones_like(value)
+            scale = torch.ones_like(value)/value.size(dim=0)
             prior = Normal(loc=loc, scale=scale)
             priors.update({str(key):prior})
 
@@ -130,7 +130,7 @@ class BNN_smMC(PyroModule):
         
         return t_hats, t_mean, t_std
     
-    def evaluate(self, train_data, val_data, n_posterior_samples):
+    def evaluate(self, train_data, val_data, n_posterior_samples, device="cpu"):
 
         random.seed(0)
         np.random.seed(0)
@@ -145,9 +145,14 @@ class BNN_smMC(PyroModule):
 
             min_x, max_x, _ = normalize_columns(x_train, return_minmax=True)
             x_val = normalize_columns(x_val, min_x=min_x, max_x=max_x) 
-            y_val=val_data["labels"]
+            y_val = torch.tensor(val_data["labels"], dtype=torch.float32)
 
             # print(x_val[:5], y_val[:5], x_val.shape, y_val.shape)
+
+        self.to(device)
+        x_train = x_train.to(device)
+        x_val = x_val.to(device)
+        y_val = y_val.to(device)
 
         with torch.no_grad():   
 
@@ -168,6 +173,10 @@ class BNN_smMC(PyroModule):
 
     def train(self, train_data, n_epochs, lr, batch_size, device="cpu"):
 
+        random.seed(0)
+        np.random.seed(0)
+        torch.manual_seed(0)
+        
         if self.likelihood=='bernoulli':
             x_train, y_train, n_samples, n_trials_train = get_bernoulli_data(train_data)
             
@@ -190,18 +199,19 @@ class BNN_smMC(PyroModule):
         train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
         print("Training...")
-        random.seed(0)
-        np.random.seed(0)
-        torch.manual_seed(0)
 
         # adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
-        adam_params = {"lr": lr}
+        adam_params = {"lr": lr, "weight_decay":1.}
         optim = Adam(adam_params)
         elbo = Trace_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
 
-        loss_history = []
         start = time.time()
+
+        self.det_network.train(train_loader=train_loader, n_trials_train=n_trials_train, epochs=1000, 
+            lr=lr, likelihood=self.likelihood, device=device)
+
+        loss_history = []
 
         for j in tqdm(range(n_epochs)):
             loss = 0

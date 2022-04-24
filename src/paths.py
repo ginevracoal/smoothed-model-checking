@@ -2,7 +2,7 @@
 
 case_studies = [
     ["SIR", "SIR_DS_500samples_50obs_beta", "SIR_DS_1000samples_1000obs_beta", ["beta"], [r"$\beta$"]],
-    # ["SIR", "SIR_DS_500samples_50obs_gamma", "SIR_DS_1000samples_1000obs_gamma", ["gamma"], [r"$\gamma$"]],
+    ["SIR", "SIR_DS_500samples_50obs_gamma", "SIR_DS_1000samples_1000obs_gamma", ["gamma"], [r"$\gamma$"]],
     # ["SIR", "SIR_DS_2500samples_50obs_betagamma", "SIR_DS_400samples_1000obs_betagamma", ["beta","gamma"], [r"$\beta$", r"$\gamma$"]],
     # ["PrGeEx", "PrGeEx_DS_500samples_50obs_k2", "PrGeEx_DS_1000samples_1000obs_k2", ["k2"], [r"$k2$"]],
     # ["PrGeEx", "PrGeEx_DS_500samples_50obs_k7", "PrGeEx_DS_1000samples_1000obs_k7", ["k7"], [r"$k7$"]],

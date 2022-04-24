@@ -13,6 +13,7 @@ parser.add_argument("--load", default=False, type=eval, help="If True load the m
 parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 args = parser.parse_args()
+print(args)
 
 plots_path = os.path.join(plots_path, "EP_GPs/")
 models_path = os.path.join(models_path, "EP_GPs/")
