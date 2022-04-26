@@ -58,20 +58,17 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== SVI GP Validation {val_filename} ===")
 
-    try:
-        with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
-            val_data = pickle.load(handle)
-        
-        post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
-            n_posterior_samples=args.n_posterior_samples)
+    with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
+        val_data = pickle.load(handle)
+    
+    post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
+        n_posterior_samples=args.n_posterior_samples)
 
-        if len(params_list)<=2:
+    if len(params_list)<=2:
 
-            fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
-                test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
+        fig = plot_posterior(params_list=params_list, math_params_list=math_params_list, train_data=train_data,
+            test_data=val_data, val_data=val_data, post_mean=post_mean, q1=q1, q2=q2)
 
-            os.makedirs(os.path.dirname(plots_path), exist_ok=True)
-            fig.savefig(plots_path+f"{out_filename}.png")
+        os.makedirs(os.path.dirname(plots_path), exist_ok=True)
+        fig.savefig(plots_path+f"{out_filename}.png")
 
-    except:
-        print("Validation set not available")

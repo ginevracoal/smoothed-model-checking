@@ -56,9 +56,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in dat
     else:
         raise NotImplementedError
 
-    # print(y_train[:10])
-    # print(x_train.shape, y_train.shape)
-
     out_filename = f"{train_filename}"
     Y_metadata = {'trials':np.full(y_train.shape, n_trials_train)}
 

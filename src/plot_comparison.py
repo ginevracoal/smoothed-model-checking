@@ -19,30 +19,43 @@ from plot_utils import plot_posterior_ax, plot_validation_ax
 from data_utils import get_tensor_data, normalize_columns
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ep_gp_n_epochs", default=1000, type=int, help="Max number of training iterations")
+parser.add_argument("--ep_gp_n_epochs", default=2000, type=int, help="Max number of training iterations")
 parser.add_argument("--ep_gp_lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--svi_gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--svi_gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--svi_gp_variational_strategy", default='default', type=str, help="Variational strategy")
-parser.add_argument("--svi_gp_batch_size", default=500, type=int, help="Batch size")
-parser.add_argument("--svi_gp_n_epochs", default=2000, type=int, help="Number of training iterations")
+parser.add_argument("--svi_gp_batch_size", default=100, type=int, help="Batch size")
+parser.add_argument("--svi_gp_n_epochs", default=1000, type=int, help="Number of training iterations")
 parser.add_argument("--svi_gp_lr", default=0.01, type=float, help="Learning rate")
+parser.add_argument("--svi_bnn_likelihood", default='binomial', type=str, help="Choose 'bernoulli' or 'binomial'")
 parser.add_argument("--svi_bnn_architecture", default='3L', type=str, help="NN architecture")
-parser.add_argument("--svi_bnn_batch_size", default=500, type=int, help="Batch size")
+parser.add_argument("--svi_bnn_batch_size", default=100, type=int, help="Batch size")
 parser.add_argument("--svi_bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
-parser.add_argument("--svi_bnn_lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--svi_bnn_n_hidden", default=10, type=int, help="Size of hidden layers")
-parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--svi_bnn_lr", default=0.001, type=float, help="Learning rate")
+parser.add_argument("--svi_bnn_n_hidden", default=30, type=int, help="Size of hidden layers")
+parser.add_argument("--n_posterior_samples", default=500, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
 args = parser.parse_args()
-
+print(args)
 
 palette = sns.color_palette("magma_r", 3)
 sns.set_style("darkgrid")
 sns.set_palette(palette)
 matplotlib.rc('font', **{'size':9, 'weight' : 'bold'})
 
+out_txt = os.path.join(plots_path, "comparison_table.txt")
+try:
+    os.remove(out_txt)
+except OSError:
+    file = open(out_txt,"w")
+    file.writelines(args.__dict__)
+
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
+
+    with open(out_txt, "a") as file:
+        file.write(f"\n\nValidation set: {val_filename}\n")
+
+    print(f"\n=== Eval on {val_filename} ===")
 
     random.seed(0)
     np.random.seed(0)
@@ -68,35 +81,41 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     ### Eval models on validation set
     
-    print(f"\n=== Eval EP GP model on {val_filename} ===")
+    print(f"\nEP GP model:")
 
     out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}_lr={args.ep_gp_lr}"
 
     smc = smMC_GPEP()
-    smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)
+    training_time = smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)
 
     x_train, y_train, n_samples_train, n_trials_train = smc.transform_data(train_data)
     x_val, y_val, n_samples_val, n_trials_val = smc.transform_data(val_data)
     post_mean, q1, q2, evaluation_dict = smc.eval_gp(x_train=x_train, x_val=x_val, y_val=val_data['labels'], 
         n_samples=n_samples_val, n_trials=n_trials_val)
 
+    with open(out_txt, "a") as file:
+        file.write(f"\nEP GP\ttraining_time={training_time}\t{evaluation_dict}")
+    
     if n_params<=2:
 
         ax = plot_posterior_ax(ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list,  
             train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='EP GP', legend=None,
             palette=palette)
 
-    print(f"\n=== Eval SVI GP model on {val_filename} ===")
+    print(f"\nSVI GP model:")
 
     out_filename = f"svi_gp_{train_filename}_epochs={args.svi_gp_n_epochs}_lr={args.svi_gp_lr}_batch={args.svi_gp_batch_size}_{args.svi_gp_variational_distribution}_{args.svi_gp_variational_strategy}"
 
     inducing_points = normalize_columns(get_tensor_data(train_data)[0])
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.svi_gp_variational_distribution,
         variational_strategy=args.svi_gp_variational_strategy, likelihood=args.svi_gp_likelihood)
-    model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename)
+    training_time = model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename)
         
     post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
         n_posterior_samples=args.n_posterior_samples)
+
+    with open(out_txt, "a") as file:
+        file.write(f"\nSVI GP\ttraining_time={training_time}\t{evaluation_dict}")
 
     if n_params<=2:
 
@@ -104,18 +123,21 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
             train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='SVI GP', legend=None,
             palette=palette)
 
-    print(f"\n=== Eval SVI BNN model on {val_filename} ===")
+    print(f"\nSVI BNN model:")
 
     pyro.clear_param_store()
 
     out_filename = f"svi_bnn_{train_filename}_epochs={args.svi_bnn_n_epochs}_lr={args.svi_bnn_lr}_batch={args.svi_bnn_batch_size}_hidden={args.svi_bnn_n_hidden}_{args.svi_bnn_architecture}"
-
-    bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, 
+    
+    bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, likelihood=args.svi_bnn_likelihood,
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
-    bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename)
+    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename)
 
     post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
         n_posterior_samples=args.n_posterior_samples)
+
+    with open(out_txt, "a") as file:
+        file.write(f"\nSVI BNN\ttraining_time={training_time}\t{evaluation_dict}")
 
     if n_params<=2:
 

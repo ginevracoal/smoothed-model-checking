@@ -147,8 +147,6 @@ class BNN_smMC(PyroModule):
             x_val = normalize_columns(x_val, min_x=min_x, max_x=max_x) 
             y_val = torch.tensor(val_data["labels"], dtype=torch.float32)
 
-            # print(x_val[:5], y_val[:5], x_val.shape, y_val.shape)
-
         self.to(device)
         x_train = x_train.to(device)
         x_val = x_val.to(device)
@@ -161,10 +159,6 @@ class BNN_smMC(PyroModule):
             evaluation_time = execution_time(start=start, end=time.time())
             print(f"Evaluation time = {evaluation_time}")
 
-        # print(post_samples.shape)
-        # post_samples = post_samples.squeeze()
-        # print(post_samples.shape)
-
         post_mean, q1, q2 , evaluation_dict = evaluate_posterior_samples(y_val=y_val,
             post_samples=post_samples, n_samples=n_samples, n_trials=n_trials)
 
@@ -176,7 +170,7 @@ class BNN_smMC(PyroModule):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
-        
+
         if self.likelihood=='bernoulli':
             x_train, y_train, n_samples, n_trials_train = get_bernoulli_data(train_data)
             
@@ -188,8 +182,7 @@ class BNN_smMC(PyroModule):
 
         self.n_trials_train = n_trials_train
         x_train = normalize_columns(x_train)
-        y_train = y_train.unsqueeze(1) # check this
-        # print(x_train[:5], y_train[:5], x_train.shape, y_train.shape)
+        y_train = y_train.unsqueeze(1)
 
         self.to(device)
         x_train = x_train.to(device)
@@ -201,7 +194,7 @@ class BNN_smMC(PyroModule):
         print("Training...")
 
         # adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
-        adam_params = {"lr": lr, "weight_decay":1.}
+        adam_params = {"lr": lr}#, "weight_decay":1.}
         optim = Adam(adam_params)
         elbo = Trace_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
@@ -261,5 +254,6 @@ class BNN_smMC(PyroModule):
             param_store.replace_param(key, value, value)
 
         file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"r+")
-        print(f"\nTraining time = {file.read()}")
-        file.close()
+        training_time = file.read()
+        print(f"\nTraining time = {training_time}")
+        return training_time

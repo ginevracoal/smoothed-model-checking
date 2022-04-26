@@ -62,8 +62,9 @@ class smMC_GPEP(object):
         return norm.cdf(mean / np.sqrt(1 + variance))
 
     def getBounds(self, mean, variance, z, x_train):
-        quantiles_interval = [mean - z * np.sqrt(variance),mean + z * np.sqrt(variance)]
-        bounds = norm.cdf(np.tile(1 / np.sqrt(1 + variance), (x_train.shape[1], 1)) * quantiles_interval)
+        quantiles_interval = [mean - z * np.sqrt(variance), mean + z * np.sqrt(variance)]
+        # bounds = norm.cdf(np.tile(1 / np.sqrt(1 + variance), (x_train.shape[1], 1)) * quantiles_interval)
+        bounds = norm.cdf(np.tile(1 / np.sqrt(1 + variance), (2, 1)) * quantiles_interval)
         return bounds[0, :], bounds[1, :]
 
     def make_predictions(self, x_train, x_test, z=1.96):
@@ -388,7 +389,9 @@ class smMC_GPEP(object):
         self.mu_tilde = smc_dict["mu_tilde"]
 
         file = open(os.path.join(filepath, filename+"_training_time.txt"),"r+")
-        print(f"\nTraining time = {file.read()}")
+        training_time = file.read()
+        print(f"\nTraining time = {training_time}")
+        return training_time
 
     def eval_gp(self, x_train, x_val, y_val, n_samples, n_trials, z=1.96):
 

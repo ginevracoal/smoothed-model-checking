@@ -107,7 +107,7 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
         axis = ax[0]
         p1, p2 = params_list[0], params_list[1]
 
-        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials})
+        data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
         data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
         data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
         pivot_data = data.pivot(p1, p2, "val_counts")

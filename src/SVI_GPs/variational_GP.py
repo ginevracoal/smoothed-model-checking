@@ -70,7 +70,9 @@ class GPmodel(ApproximateGP):
         self.load_state_dict(state_dict)
 
         file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"r+")
-        print(f"\nTraining time = {file.read()}")
+        training_time = file.read()
+        print(f"\nTraining time = {training_time}")
+        return training_time
 
     def save(self, filepath, filename):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
