@@ -55,4 +55,4 @@ python plot_comparison.py
 
 Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/comparison_table.txt`.
 
-To reproduce plots from the paper simply run `./train.sh`.
+To reproduce plots from the paper simply run `./exec.sh`.

@@ -33,15 +33,15 @@ LOGS="out/logs/"
 mkdir -p $LOGS
 OUT="${LOGS}${DATE}_${TIME}_out.txt"
 
-python EP_GPs/train.py --n_epochs=$EP_GP_N_EPOCHS --lr=$EP_GP_LR >> $OUT 2>&1
+# python EP_GPs/train.py --n_epochs=$EP_GP_N_EPOCHS --lr=$EP_GP_LR >> $OUT 2>&1
 
-python SVI_GPs/train.py --variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
-	--variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --batch_size=$SVI_GP_BATCH_SIZE \
-	--n_epochs=$SVI_GP_N_EPOCHS --lr=$SVI_GP_LR --n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
+# python SVI_GPs/train.py --variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
+# 	--variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --batch_size=$SVI_GP_BATCH_SIZE \
+# 	--n_epochs=$SVI_GP_N_EPOCHS --lr=$SVI_GP_LR --n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
 
-python SVI_BNNs/train.py --architecture=$SVI_BNN_ARCHITECTURE --batch_size=$SVI_BNN_BATCH_SIZE \
-	--n_epochs=$SVI_BNN_N_EPOCHS --lr=$SVI_BNN_LR --n_hidden=$SVI_BNN_N_HIDDEN \
-	--n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
+# python SVI_BNNs/train.py --architecture=$SVI_BNN_ARCHITECTURE --batch_size=$SVI_BNN_BATCH_SIZE \
+# 	--n_epochs=$SVI_BNN_N_EPOCHS --lr=$SVI_BNN_LR --n_hidden=$SVI_BNN_N_HIDDEN \
+# 	--n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
 
 python plot_comparison.py --ep_gp_n_epochs=$EP_GP_N_EPOCHS --ep_gp_lr=$EP_GP_LR \
 	--svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
