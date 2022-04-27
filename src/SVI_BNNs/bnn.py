@@ -191,21 +191,20 @@ class BNN_smMC(PyroModule):
         dataset = TensorDataset(x_train, y_train) 
         train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
 
-        print("Training...")
+        start = time.time()
 
+        print("\nDeterministic Training:")
+        self.det_network.train(train_loader=train_loader, n_trials_train=n_trials_train, epochs=500, 
+            lr=0.01, likelihood=self.likelihood, device=device)
+
+        print("\nBayesian Training:")
         # adam_params = {"lr": self.lr, "betas": (0.95, 0.999)}
         adam_params = {"lr": lr}#, "weight_decay":1.}
         optim = Adam(adam_params)
         elbo = Trace_ELBO()
         svi = SVI(self.model, self.guide, optim, loss=elbo)
 
-        start = time.time()
-
-        self.det_network.train(train_loader=train_loader, n_trials_train=n_trials_train, epochs=1000, 
-            lr=lr, likelihood=self.likelihood, device=device)
-
         loss_history = []
-
         for j in tqdm(range(n_epochs)):
             loss = 0
             for x_batch, y_batch in train_loader:

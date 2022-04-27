@@ -23,7 +23,7 @@ parser.add_argument("--architecture", default='3L', type=str, help="NN architect
 parser.add_argument("--batch_size", default=100, type=int, help="")
 parser.add_argument("--n_epochs", default=10000, type=int, help="Number of training iterations")
 parser.add_argument("--lr", default=0.001, type=float, help="Learning rate")
-parser.add_argument("--n_hidden", default=10, type=int, help="Size of hidden layers")
+parser.add_argument("--n_hidden", default=30, type=int, help="Size of hidden layers")
 parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 parser.add_argument("--load", default=False, type=eval)

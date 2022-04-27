@@ -8,7 +8,7 @@ from data_utils import get_binomial_data, get_bernoulli_data, get_tensor_data
 
 
 def plot_posterior_ax(ax, ax_idxs, params_list, math_params_list, train_data, test_data, post_mean, q1, q2, 
-    title, legend, palette, poisson=False, plot_training_points=False):
+    title, legend, palette, plot_training_points=False):
 
     x_train, y_train, n_samples, n_trials = get_binomial_data(train_data)
     x_test, y_test, n_samples, n_trials = get_binomial_data(test_data)
@@ -18,31 +18,16 @@ def plot_posterior_ax(ax, ax_idxs, params_list, math_params_list, train_data, te
 
     if n_params==1:
 
-        if poisson:
+        if plot_training_points:
+            sns.scatterplot(x=x_train_binomial.flatten(), y=y_train.flatten()/n_trials, ax=axis, 
+                label='Training', marker='.', color='black', alpha=alpha, legend=legend, palette=palette, linewidth=0)
 
-            raise NotImplementedError
-            # if plot_training_points:
-            #     sns.scatterplot(x=x_train, y=y_train.flatten(), ax=axis, 
-            #         label='Training', marker='.', color='black', alpha=0.8, legend=legend, palette=palette, linewidth=0)
+        sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior',  legend=legend, palette=palette)
+        axis.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
 
-            # sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior', legend=legend, palette=palette)
-            # axis.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
-
-            # axis.set_xlabel(math_params_list[0])
-            # axis.set_ylabel('Satisfaction probability')
-            # axis.set_title(title)
-
-        else:
-            if plot_training_points:
-                sns.scatterplot(x=x_train_binomial.flatten(), y=y_train.flatten()/n_trials, ax=axis, 
-                    label='Training', marker='.', color='black', alpha=alpha, legend=legend, palette=palette, linewidth=0)
-
-            sns.lineplot(x=x_test.flatten(), y=post_mean, ax=axis, label='Posterior',  legend=legend, palette=palette)
-            axis.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
-
-            axis.set_xlabel(math_params_list[0])
-            axis.set_ylabel('Satisfaction probability')
-            axis.set_title(title)
+        axis.set_xlabel(math_params_list[0])
+        axis.set_ylabel('Satisfaction probability')
+        axis.set_title(title)
 
     elif n_params==2:
 
@@ -80,7 +65,6 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
 
             if plot_validation_ci:
                 idxs = np.linspace(0,n_samples-1,val_points_ci).astype(int)
-                # idxs = np.random.randint(0, n_samples, size=val_points_ci)
                 x_val = x_val[idxs]
                 y_val_bernoulli = y_val_bernoulli[idxs]
 

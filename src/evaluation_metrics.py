@@ -52,7 +52,6 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     print(f"Average uncertainty area:  {avg_uncertainty_area}\n")
 
     evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "avg_uncertainty_area":avg_uncertainty_area}
-
     return post_mean, q1, q2, evaluation_dict
 
 def execution_time(start, end):

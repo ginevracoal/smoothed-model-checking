@@ -33,7 +33,7 @@ parser.add_argument("--svi_bnn_batch_size", default=100, type=int, help="Batch s
 parser.add_argument("--svi_bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
 parser.add_argument("--svi_bnn_lr", default=0.001, type=float, help="Learning rate")
 parser.add_argument("--svi_bnn_n_hidden", default=30, type=int, help="Size of hidden layers")
-parser.add_argument("--n_posterior_samples", default=500, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
 args = parser.parse_args()
 print(args)

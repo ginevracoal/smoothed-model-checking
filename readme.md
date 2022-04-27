@@ -9,10 +9,6 @@
 - `BNNs/` implements the Bayesian Neural Network model
 - `GPs/` implements the Gaussian Process model
 
-Datasets are loaded here: https://mega.nz/folder/pbBFnYSJ#XXwzMHfJaV4G9xKx3NMIwg
-
-Time needed to generate data: https://www.dropbox.com/scl/fi/h3twljfitial1galoui9n/Datasets.paper?dl=0&rlkey=625cm5u25h1d4qqnwn1jbuw4g
-
 ## Setup
 
 Python version 3.7.6
@@ -30,10 +26,33 @@ Activate the environment
 source venv/bin/activate
 ```
 
-In `Datasets/Data_Generation/run_data_generation.py` set `model_name` and `latin_flag` (to use a latin hypercube sampling strategy) and the run: `python run_data_generation.py`
+### Download training and validation datasets
 
-Train models
+Download the available datasets in a folder `src/data/` from: https://mega.nz/folder/pbBFnYSJ#XXwzMHfJaV4G9xKx3NMIwg
+
+Time needed to generate the data: https://www.dropbox.com/scl/fi/h3twljfitial1galoui9n/Datasets.paper?dl=0&rlkey=625cm5u25h1d4qqnwn1jbuw4g
+
+To generate new datasets update the configuration files `src/Datasets/Data_Generation/*_config.py` and run `python efficient_data_gen.py` with the desired settings. 
+
+### Case studies
+
+`src/paths.py` contains the informations needed to perform training and evaluation on the several case studies.
+Comment out the unwanted lines to exclude them from computations.
+
+### Train and evaluate
+
+Train and evaluate EP GP, SVI GP and SVI BNN models:
 ```
-python BNNs/train_bnn.py
-python GPs/train_gp.py
+python EP_GPs/train_bnn.py
+python SVI_GPs/train_gp.py
+python SVI_BNNs/train_bnn.py
 ```
+
+Plot final comparison between the trained models and get summary statistics:
+```
+python plot_comparison.py
+```
+
+Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/comparison_table.txt`.
+
+To reproduce plots from the paper simply run `./train.sh`.

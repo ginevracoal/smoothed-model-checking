@@ -83,10 +83,8 @@ class DeterministicNetwork(nn.Module):
         torch.manual_seed(0)
 
         self.to(device)
-
         optimizer = torchopt.Adam(params=self.parameters(), lr=lr)
 
-        # start = time.time()
         for epoch in range(epochs):
             total_loss = 0.0
             correct_predictions = 0.0
@@ -96,21 +94,15 @@ class DeterministicNetwork(nn.Module):
                 optimizer.zero_grad()
                 outputs = self.forward(x_batch, device)
                 outputs = nnf.sigmoid(outputs)
-                # print(outputs, outputs.shape)
                 loss = self.loss_func(likelihood=likelihood, probs=outputs, n_trials_train=n_trials_train, y_batch=y_batch)
-                # print(loss, loss.shape)
                 loss.backward()
                 optimizer.step()
-
-                # predictions = outputs.argmax(-1)
-                # correct_predictions += (predictions == y_batch).sum()
                 total_loss += loss.item()
 
             total_loss = total_loss / len(train_loader.dataset)
-            # accuracy = 100 * correct_predictions / len(train_loader.dataset)
-            print(f"[Epoch {epoch + 1}]\t loss: {total_loss:.8f}")
-
-        # execution_time(start=start, end=time.time())
+            
+            if (epoch+1)%50==0:
+                print("Epoch ", epoch+1, "/", epochs, " Loss ", total_loss)
 
 
     def evaluate(self, train_data, val_data, device="cpu"):

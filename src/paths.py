@@ -10,9 +10,9 @@ case_studies = [
     ["PRDeg", "PRDeg_DS_500samples_50obs_k1", "PRDeg_DS_1000samples_1000obs_k1", ["k1"], [r"$k1$"]],
     ["PRDeg", "PRDeg_DS_8000_latin_samples_20obs_k1k2k3", "PRDeg_DS_1000_latin_samples_1000obs_k1k2k3", ["k1","k2","k3"], [r"$k1$",r"$k2$",r"$k3$"]],
     ["PRDeg", "PRDeg_DS_10000_latin_samples_20obs_k1k2k3k4", "PRDeg_DS_4096_latin_samples_1000obs_k1k2k3k4", ["k1","k2","k3","k4"], [r"$k1$",r"$k2$",r"$k3$",r"$k4$"]],
-    # ["PRDeg", "PRDeg_DS_2500samples_50obs_kprodkdeg", "PRDeg_DS_400samples_1000obs_kprodkdeg", ["kp", "kd"], [r"$k_p$", r"$k_d$"]],
+    ## ["PRDeg", "PRDeg_DS_2500samples_50obs_kprodkdeg", "PRDeg_DS_400samples_1000obs_kprodkdeg", ["kp", "kd"], [r"$k_p$", r"$k_d$"]],
 ]
 
-data_path = '../data/'
+data_path = 'data/'
 plots_path='out/plots/'
 models_path = 'out/models/'

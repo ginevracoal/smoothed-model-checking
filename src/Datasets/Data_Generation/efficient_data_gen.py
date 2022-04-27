@@ -1,15 +1,23 @@
+import time
+from model_utils import *
 from GenerateData import *
 from BooleanLabeler import *
-from model_utils import *
-import time
 from contextlib import redirect_stdout
-model_name = "PrGeEx"
-list_params = ["k2","k7"]
-latin_flag = False
-train_flag = False
+
+############
+# settings #
+############
+
+model_name = "PrGeEx" # choose between: SIR, PrGeEx, PRDeg
+list_params = ["k2","k7"] # choose ["beta"], ["gamma"] or ["beta","gamma"] for SIR case study
+                          # choose ["k2"], ["k7"] or ["k2","k7"] for PrGeEx case study
+                          # choose ["k1"], ["k1","k2","k3"], ["k1","k2","k3","k4"] or ["kp", "kd"] for PRDeg case study
+train_flag = False # if True generate training data else generate validation data
+latin_flag = False # if True use latin hypercube sampling
+
+############
+
 formula, position_dict = get_model_details(model_name)
-
-
 gen = get_generator(model_name, list_params, latin_flag, train_flag)
 gen.D["position_dict"] = position_dict
 gen.D["formula"] = formula 
