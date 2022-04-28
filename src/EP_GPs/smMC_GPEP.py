@@ -73,11 +73,17 @@ class smMC_GPEP(object):
         post_mean = self.getProbability(mean, variance)
         return post_mean, q1, q2
 
-    def fit(self, x_train, y_train, n_trajectories):
+    def fit(self, x_train, y_train, n_trajectories, max_training_samples=100000):
         start = time.time()
 
         aa, bb = self.getDefaultHyperarametersRBF(x_train, y_train)
         objectivefunctionWrap = lambda x: self.objectivefunction(x_train, y_train, n_trajectories=n_trajectories, l=x)
+        
+        if len(x_train)>max_training_samples: 
+            idxs = np.linspace(0,len(x_train)-1,max_training_samples).astype(int)
+            x_train = x_train[idxs]
+            y_train = y_train[idxs]
+
         res = minimize(objectivefunctionWrap, bb, method='L-BFGS-B', bounds=((0.5 * bb, 2 * bb),))
         r = RBF(res.x)
         self.kernel = r

@@ -10,8 +10,7 @@ from plot_utils import plot_posterior
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
-parser.add_argument("--n_epochs", default=2000, type=int, help="Max number of training iterations")
-parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
+parser.add_argument("--n_epochs", default=3000, type=int, help="Max number of training iterations")
 args = parser.parse_args()
 print(args)
 
@@ -22,7 +21,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== EP GP Training {train_filename} ===")
 
-    out_filename = f"ep_gp_{train_filename}_epochs={args.n_epochs}_lr={args.lr}"
+    out_filename = f"ep_gp_{train_filename}_epochs={args.n_epochs}"
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)

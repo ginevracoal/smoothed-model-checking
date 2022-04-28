@@ -19,8 +19,7 @@ from plot_utils import plot_posterior_ax, plot_validation_ax
 from data_utils import get_tensor_data, normalize_columns
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ep_gp_n_epochs", default=2000, type=int, help="Max number of training iterations")
-parser.add_argument("--ep_gp_lr", default=0.01, type=float, help="Learning rate")
+parser.add_argument("--ep_gp_n_epochs", default=3000, type=int, help="Max number of training iterations")
 parser.add_argument("--svi_gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--svi_gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--svi_gp_variational_strategy", default='default', type=str, help="Variational strategy")
@@ -74,7 +73,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     n_params = len(params_list)
 
     if n_params==1:
-        fig, ax = plt.subplots(1, 3, figsize=(10, 3), dpi=150, sharex=True, sharey=True)
+        fig, ax = plt.subplots(1, 3, figsize=(9, 3), dpi=150, sharex=True, sharey=True)
 
     elif n_params==2:
         fig, ax = plt.subplots(1, 4, figsize=(11, 3), dpi=150, sharex=True, sharey=True)
@@ -83,7 +82,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     
     print(f"\nEP GP model:")
 
-    out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}_lr={args.ep_gp_lr}"
+    out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}"
 
     smc = smMC_GPEP()
     training_time = smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)

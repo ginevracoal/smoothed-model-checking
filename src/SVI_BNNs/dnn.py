@@ -25,7 +25,6 @@ class DeterministicNetwork(nn.Module):
 
         # initialize nn.Module
         super(DeterministicNetwork, self).__init__()
-
         output_size = 1
 
         if activation_function=='leaky':
