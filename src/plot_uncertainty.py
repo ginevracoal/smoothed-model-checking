@@ -71,10 +71,20 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
         val_data = pickle.load(handle)
 
-    ### Set plots
+    ### Validation
 
-    # n_params = len(params_list)
-    # fig, ax = plt.subplots(1, 1, figsize=(5, 3), dpi=100, sharex=True, sharey=True)
+    x_val, y_val_bernoulli = val_data['params'], val_data['labels']
+    p = y_val_bernoulli.mean(1).flatten()
+    sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
+    std = np.sqrt(sample_variance).flatten()
+    n_trials_val = get_tensor_data(val_data)[3]
+    errors = (1.96*std)/np.sqrt(n_trials_val)
+
+    df = pd.concat([df, pd.DataFrame({
+        "params_idx":list(range(len(val_data["params"]))),
+        "uncertainty":2*errors,
+        "model":"Validation"
+        })], ignore_index=True)
 
     ### Eval models on validation set
     
@@ -103,13 +113,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         "model":"EP GP"
         })], ignore_index=True)    
 
-    # if args.method=="lineplot":
-    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=evaluation_dict["uncertainty_area"], ax=ax, 
-    #         label="EP GP", palette=palette)
-
-    # elif args.method=="boxplot":
-    #     sns.boxplot(y=evaluation_dict["uncertainty_area"], ax=ax, label="EP GP", palette=palette)
-
     print(f"\nSVI GP model:")
 
     out_filename = f"svi_gp_{train_filename}_epochs={args.svi_gp_n_epochs}_lr={args.svi_gp_lr}_batch={args.svi_gp_batch_size}_{args.svi_gp_variational_distribution}_{args.svi_gp_variational_strategy}"
@@ -124,13 +127,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     with open(out_txt, "a") as file:
         file.write(f"\nSVI GP\ttraining_time={training_time}\t{evaluation_dict}")
-
-    # if args.method=="lineplot":
-    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=evaluation_dict["uncertainty_area"], ax=ax, 
-    #         label="SVI GP", palette=palette)
-
-    # elif args.method=="boxplot":
-    #     sns.boxplot(y=evaluation_dict["uncertainty_area"], ax=ax, label="SVI GP", palette=palette)
 
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
@@ -154,39 +150,10 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     with open(out_txt, "a") as file:
         file.write(f"\nSVI BNN\ttraining_time={training_time}\t{evaluation_dict}")
 
-    # if args.method=="lineplot":
-    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=evaluation_dict["uncertainty_area"], ax=ax, 
-    #         label="SVI BNN", palette=palette)
-
-    # elif args.method=="boxplot":
-    #     sns.boxplot(y=evaluation_dict["uncertainty_area"], ax=ax, label="SVI BNN", palette=palette)
-
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
         "uncertainty":evaluation_dict["uncertainty_area"],
         "model":"SVI BNN"
-        })], ignore_index=True)
-
-    ### plot validation
-
-    x_val, y_val_bernoulli = val_data['params'], val_data['labels']
-    p = y_val_bernoulli.mean(1).flatten()
-    sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
-    std = np.sqrt(sample_variance).flatten()
-    errors = (1.96*std)/np.sqrt(n_trials_val)
-
-    # if args.method=="lineplot":
-    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=2*errors, ax=ax, label="Validation", 
-    #         palette=palette)
-    #     ax.set(xlabel="Parameters index")
-
-    # elif args.method=="boxplot":
-    #     sns.boxplot(y=2*errors, ax=ax, label="Validation", palette=palette)
-
-    df = pd.concat([df, pd.DataFrame({
-        "params_idx":list(range(len(val_data["params"]))),
-        "uncertainty":2*errors,
-        "model":"Validation"
         })], ignore_index=True)
 
     ### lineplot
@@ -203,7 +170,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     ### boxplot
 
-    fig, ax = plt.subplots(figsize=(5, 3), dpi=150, sharex=True, sharey=True)
+    fig, ax = plt.subplots(figsize=(4, 3), dpi=150, sharex=True, sharey=True)
     sns.boxplot(data=df, x="model", y="uncertainty", ax=ax, palette=palette, dodge=False, showfliers=False)
     ax.set_xlabel("Model")
     ax.set_ylabel("Uncertainty")
