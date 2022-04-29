@@ -36,6 +36,10 @@ models_path = os.path.join(models_path, "SVI_BNNs/")
 
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
+    if len(params_list)==6:
+        args.epochs = 100
+        args.batch_size = 5000
+
     print(f"\n=== SVI BNN Training {train_filename} ===")
 
     out_filename = f"svi_bnn_{train_filename}_epochs={args.n_epochs}_lr={args.lr}_batch={args.batch_size}_hidden={args.n_hidden}_{args.architecture}"

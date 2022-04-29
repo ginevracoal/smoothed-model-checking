@@ -63,7 +63,7 @@ python plot_satisfaction.py
 <img src="readme_plots/SIR_DS_400samples_1000obs_betagamma.png" width="650"/>
 
 ```
-python plot_plot_uncertainty.py
+python plot_uncertainty.py
 ```
 <img src="readme_plots/SIR_DS_1000samples_1000obs_beta_uncertainty_lineplot.png" width="400"/>
 <img src="readme_plots/PrGeEx_DS_400samples_1000obs_k2k7_uncertainty_boxplot.png" width="300"/>

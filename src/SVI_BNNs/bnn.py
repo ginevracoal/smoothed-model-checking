@@ -64,7 +64,6 @@ class BNN_smMC(PyroModule):
         # set Gaussian priors on the weights of self.det_network
         for key, value in self.det_network.state_dict().items():
             loc = value #torch.zeros_like(value)
-            # scale = torch.ones_like(value)
             scale = torch.ones_like(value)/value.size(dim=0)
             prior = Normal(loc=loc, scale=scale)
             priors.update({str(key):prior})

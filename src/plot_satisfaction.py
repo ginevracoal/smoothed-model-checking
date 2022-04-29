@@ -32,7 +32,7 @@ parser.add_argument("--svi_bnn_batch_size", default=100, type=int, help="Batch s
 parser.add_argument("--svi_bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
 parser.add_argument("--svi_bnn_lr", default=0.001, type=float, help="Learning rate")
 parser.add_argument("--svi_bnn_n_hidden", default=30, type=int, help="Size of hidden layers")
-parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
 args = parser.parse_args()
 print(args)
@@ -68,6 +68,18 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     with open(os.path.join(data_path, filepath, val_filename+".pickle"), 'rb') as handle:
         val_data = pickle.load(handle)
 
+    ### Validation uncertainty
+
+    x_val, y_val_bernoulli = val_data['params'], val_data['labels']
+    p = y_val_bernoulli.mean(1).flatten()
+    sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
+    std = np.sqrt(sample_variance).flatten()
+    n_trials_val = get_tensor_data(val_data)[3]
+    errors = (1.96*std)/np.sqrt(n_trials_val)
+
+    with open(out_txt, "a") as file:
+        file.write(f"\nValidation avg_unc={np.mean(2*errors)}")
+
     ### Set plots
 
     n_params = len(params_list)
@@ -85,7 +97,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     try:
 
         out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}"
-
         smc = smMC_GPEP()
         training_time = smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)
 
@@ -95,7 +106,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
             n_samples=n_samples_val, n_trials=n_trials_val)
 
         with open(out_txt, "a") as file:
-            file.write(f"\nEP GP\ttraining_time={training_time}\t{evaluation_dict}")
+            file.write(f"\nEP GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
 
     except:
         print("\nEP is unfeasible on this dataset.")
@@ -119,7 +130,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         n_posterior_samples=args.n_posterior_samples)
 
     with open(out_txt, "a") as file:
-        file.write(f"\nSVI GP\ttraining_time={training_time}\t{evaluation_dict}")
+        file.write(f"\nSVI GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
 
     if n_params<=2:
 
@@ -141,7 +152,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         n_posterior_samples=args.n_posterior_samples)
 
     with open(out_txt, "a") as file:
-        file.write(f"\nSVI BNN\ttraining_time={training_time}\t{evaluation_dict}")
+        file.write(f"\nSVI BNN\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
 
     if n_params<=2:
 

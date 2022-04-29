@@ -18,7 +18,6 @@ from SVI_GPs.variational_GP import GPmodel
 from data_utils import get_tensor_data, normalize_columns
 
 parser = argparse.ArgumentParser()
-# parser.add_argument("--method", default='lineplot', type=str, help="Choose 'lineplot' or 'boxplot'")
 parser.add_argument("--ep_gp_n_epochs", default=3000, type=int, help="Max number of training iterations")
 parser.add_argument("--svi_gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--svi_gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
@@ -32,7 +31,7 @@ parser.add_argument("--svi_bnn_batch_size", default=100, type=int, help="Batch s
 parser.add_argument("--svi_bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
 parser.add_argument("--svi_bnn_lr", default=0.001, type=float, help="Learning rate")
 parser.add_argument("--svi_bnn_n_hidden", default=30, type=int, help="Size of hidden layers")
-parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
 args = parser.parse_args()
 print(args)
@@ -80,6 +79,9 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     n_trials_val = get_tensor_data(val_data)[3]
     errors = (1.96*std)/np.sqrt(n_trials_val)
 
+    with open(out_txt, "a") as file:
+        file.write(f"\nValidation avg_unc={np.mean(2*errors)}")
+
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
         "uncertainty":2*errors,
@@ -102,16 +104,16 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
             n_samples=n_samples_val, n_trials=n_trials_val)
 
         with open(out_txt, "a") as file:
-            file.write(f"\nEP GP\ttraining_time={training_time}\t{evaluation_dict}")
+            file.write(f"\nEP GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
+
+        df = pd.concat([df, pd.DataFrame({
+            "params_idx":list(range(len(val_data["params"]))),
+            "uncertainty":evaluation_dict["uncertainty_area"],
+            "model":"EP GP"
+            })], ignore_index=True)  
 
     except:
         print("\nEP is unfeasible on this dataset.")
-
-    df = pd.concat([df, pd.DataFrame({
-        "params_idx":list(range(len(val_data["params"]))),
-        "uncertainty":evaluation_dict["uncertainty_area"],
-        "model":"EP GP"
-        })], ignore_index=True)    
 
     print(f"\nSVI GP model:")
 
@@ -126,7 +128,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         n_posterior_samples=args.n_posterior_samples)
 
     with open(out_txt, "a") as file:
-        file.write(f"\nSVI GP\ttraining_time={training_time}\t{evaluation_dict}")
+        file.write(f"\nSVI GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
 
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
@@ -148,7 +150,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         n_posterior_samples=args.n_posterior_samples)
 
     with open(out_txt, "a") as file:
-        file.write(f"\nSVI BNN\ttraining_time={training_time}\t{evaluation_dict}")
+        file.write(f"\nSVI BNN\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
 
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
@@ -156,27 +158,30 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         "model":"SVI BNN"
         })], ignore_index=True)
 
-    ### lineplot
 
-    fig, ax = plt.subplots(figsize=(5, 3), dpi=150, sharex=True, sharey=True)
-    sns.lineplot(data=df, x="params_idx", y="uncertainty", ax=ax, hue="model", palette=palette)
-    ax.set_xlabel("Param. index")
-    ax.set_ylabel("Uncertainty")
+    if len(params_list)==1:
 
-    plt.tight_layout()
-    plt.close()
-    os.makedirs(os.path.join(plots_path), exist_ok=True)
-    fig.savefig(os.path.join(plots_path, f"{val_filename}_uncertainty_lineplot.png"))
+        ### lineplot
+        fig, ax = plt.subplots(figsize=(5, 3), dpi=150, sharex=True, sharey=True)
+        sns.lineplot(data=df, x="params_idx", y="uncertainty", ax=ax, hue="model", palette=palette)
+        ax.set_xlabel("Param. index")
+        ax.set_ylabel("Uncertainty")
 
-    ### boxplot
+        plt.tight_layout()
+        plt.close()
+        os.makedirs(os.path.join(plots_path), exist_ok=True)
+        fig.savefig(os.path.join(plots_path, f"{val_filename}_uncertainty_lineplot.png"))
 
-    fig, ax = plt.subplots(figsize=(4, 3), dpi=150, sharex=True, sharey=True)
-    sns.boxplot(data=df, x="model", y="uncertainty", ax=ax, palette=palette, dodge=False, showfliers=False)
-    ax.set_xlabel("Model")
-    ax.set_ylabel("Uncertainty")
+    else:
 
-    plt.tight_layout()
-    plt.close()
-    os.makedirs(os.path.join(plots_path), exist_ok=True)
-    fig.savefig(os.path.join(plots_path, f"{val_filename}_uncertainty_boxplot.png"))
+        ### boxplot
+        fig, ax = plt.subplots(figsize=(4, 3), dpi=150, sharex=True, sharey=True)
+        sns.boxplot(data=df, x="model", y="uncertainty", ax=ax, palette=palette, dodge=False, showfliers=False)
+        ax.set_xlabel("Model")
+        ax.set_ylabel("Uncertainty")
+
+        plt.tight_layout()
+        plt.close()
+        os.makedirs(os.path.join(plots_path), exist_ok=True)
+        fig.savefig(os.path.join(plots_path, f"{val_filename}_uncertainty_boxplot.png"))
 

@@ -76,7 +76,7 @@ class smMC_GPEP(object):
     def fit(self, x_train, y_train, n_trajectories):
         start = time.time()
         aa, bb = self.getDefaultHyperarametersRBF(x_train, y_train)
-        objectivefunctionWrap = lambda x: self.objectivefunction(x_train_tmp, y_train_tmp, n_trajectories=n_trajectories, l=x)
+        objectivefunctionWrap = lambda x: self.objectivefunction(x_train, y_train, n_trajectories=n_trajectories, l=x)
 
         res = minimize(objectivefunctionWrap, bb, method='L-BFGS-B', bounds=((0.5 * bb, 2 * bb),))
         r = RBF(res.x)
