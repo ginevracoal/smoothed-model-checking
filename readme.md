@@ -51,6 +51,7 @@ python SVI_BNNs/train_bnn.py
 Plot final comparisons between the trained models and get summary statistics:
 ```
 python plot_satisfaction.py
+python plot_plot_uncertainty.py
 ```
 
 Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/evaluation_out.txt`.
