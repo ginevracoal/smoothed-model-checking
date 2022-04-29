@@ -1,3 +1,10 @@
+# Stochastic Variational Smoothed Model Checking
+
+Luca Bortolussi, Francesca Cairoli, Ginevra Carbone, Paolo Pulcini (2022)
+
+### Abstract
+Model-checking for parametric stochastic models can be expressed as
+checking the satisfaction probability of a certain property as a function of the parameters of the model. Smoothed model checking (smMC) leverages Gaussian Processes (GP) to infer the satisfaction function over the entire parameter space from a limited set of observations obtained via simulation. This approach provides accurate reconstructions with statistically sound quantification of the uncertainty. However, it inherits the scalability issues of GP. In this paper, we exploit recent advances in probabilistic machine learning to push this limitation forward, making Bayesian inference of smMC scalable to larger datasets, enabling its application to larger models in terms of the dimension of the parameter set. We propose Stochastic Variational Smoothed Model Checking (SV-smMC), a solution that exploits stochastic variational inference (SVI) to approximate the posterior distribution of the smMC problem. The strength and flexibility of SVI make SV-smMC applicable to two alternative probabilistic models: Gaussian Processes (GP) and Bayesian Neural Networks (BNN). Moreover, SVI makes inference easily parallelizable and it enables GPU acceleration. In this paper, we compare the performances of smMC against those of SV-smMC by looking at the scalability, the computational efficiency and at the accuracy of the reconstructed satisfaction function. 
 
 ## Project structure
 
@@ -51,9 +58,17 @@ python SVI_BNNs/train_bnn.py
 Plot final comparisons between the trained models and get summary statistics:
 ```
 python plot_satisfaction.py
+```
+<img src="readme_plots/SIR_DS_1000samples_1000obs_beta.png" width="400"/>
+<img src="readme_plots/SIR_DS_400samples_1000obs_betagamma.png" width="400"/>
+
+```
 python plot_plot_uncertainty.py
 ```
+<img src="readme_plots/SIR_DS_1000samples_1000obs_beta_uncertainty_lineplot.png" width="200"/>
+<img src="readme_plots/PrGeEx_DS_400samples_1000obs_k2k7_uncertainty_boxplot.png" width="200"/>
+
 
 Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/evaluation_out.txt`.
 
-To reproduce plots from the paper simply run `./exec.sh`.
+To reproduce all plots from the paper simply run `./exec.sh`.
