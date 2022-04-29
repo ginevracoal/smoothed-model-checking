@@ -3,11 +3,11 @@
 *screenlog.0
 
 venv/
-data/
+*data/
 src/out/
 
-*plots/
-*models/
+
+
 
 
 
