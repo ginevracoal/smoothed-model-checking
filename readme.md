@@ -59,14 +59,14 @@ Plot final comparisons between the trained models and get summary statistics:
 ```
 python plot_satisfaction.py
 ```
-<img src="readme_plots/SIR_DS_1000samples_1000obs_beta.png" width="650"/>
+<img src="readme_plots/SIR_DS_1000samples_1000obs_beta.png" width="700"/>
 <img src="readme_plots/SIR_DS_400samples_1000obs_betagamma.png" width="650"/>
 
 ```
 python plot_plot_uncertainty.py
 ```
 <img src="readme_plots/SIR_DS_1000samples_1000obs_beta_uncertainty_lineplot.png" width="400"/>
-<img src="readme_plots/PrGeEx_DS_400samples_1000obs_k2k7_uncertainty_boxplot.png" width="400"/>
+<img src="readme_plots/PrGeEx_DS_400samples_1000obs_k2k7_uncertainty_boxplot.png" width="300"/>
 
 
 Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/evaluation_out.txt`.
