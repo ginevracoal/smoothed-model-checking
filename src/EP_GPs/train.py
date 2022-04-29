@@ -6,7 +6,7 @@ import pickle5 as pickle
 sys.path.append(".")
 from paths import *
 from EP_GPs.smMC_GPEP import *
-from plot_utils import plot_posterior
+from posterior_plot_utils import plot_posterior
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")

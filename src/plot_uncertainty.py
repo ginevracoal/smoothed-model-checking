@@ -15,10 +15,10 @@ from paths import *
 from SVI_BNNs.bnn import BNN_smMC
 from EP_GPs.smMC_GPEP import smMC_GPEP
 from SVI_GPs.variational_GP import GPmodel
-from plot_utils import plot_posterior_ax, plot_validation_ax
 from data_utils import get_tensor_data, normalize_columns
 
 parser = argparse.ArgumentParser()
+# parser.add_argument("--method", default='lineplot', type=str, help="Choose 'lineplot' or 'boxplot'")
 parser.add_argument("--ep_gp_n_epochs", default=3000, type=int, help="Max number of training iterations")
 parser.add_argument("--svi_gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--svi_gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
@@ -37,19 +37,22 @@ parser.add_argument("--plot_training_points", default=False, type=bool, help="")
 args = parser.parse_args()
 print(args)
 
-palette = sns.color_palette("magma_r", 3)
+palette = sns.color_palette("magma_r", 4)
 sns.set_style("darkgrid")
 sns.set_palette(palette)
 matplotlib.rc('font', **{'size':9, 'weight' : 'bold'})
 
-out_txt = os.path.join(plots_path, "comparison_table.txt")
+out_txt = os.path.join(plots_path, "evaluation_out.txt")
 try:
     os.remove(out_txt)
 except OSError:
     file = open(out_txt,"w")
     file.writelines(args.__dict__)
 
+
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
+
+    df = pd.DataFrame()
 
     with open(out_txt, "a") as file:
         file.write(f"\n\nValidation set: {val_filename}\n")
@@ -70,36 +73,42 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     ### Set plots
 
-    n_params = len(params_list)
-
-    if n_params==1:
-        fig, ax = plt.subplots(1, 3, figsize=(9, 3), dpi=150, sharex=True, sharey=True)
-
-    elif n_params==2:
-        fig, ax = plt.subplots(1, 4, figsize=(11, 3), dpi=150, sharex=True, sharey=True)
+    # n_params = len(params_list)
+    # fig, ax = plt.subplots(1, 1, figsize=(5, 3), dpi=100, sharex=True, sharey=True)
 
     ### Eval models on validation set
     
     print(f"\nEP GP model:")
 
-    out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}"
+    try:
+        out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}"
 
-    smc = smMC_GPEP()
-    training_time = smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)
+        smc = smMC_GPEP()
+        training_time = smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)
 
-    x_train, y_train, n_samples_train, n_trials_train = smc.transform_data(train_data)
-    x_val, y_val, n_samples_val, n_trials_val = smc.transform_data(val_data)
-    post_mean, q1, q2, evaluation_dict = smc.eval_gp(x_train=x_train, x_val=x_val, y_val=val_data['labels'], 
-        n_samples=n_samples_val, n_trials=n_trials_val)
+        x_train, y_train, n_samples_train, n_trials_train = smc.transform_data(train_data)
+        x_val, y_val, n_samples_val, n_trials_val = smc.transform_data(val_data)
+        post_mean, q1, q2, evaluation_dict = smc.eval_gp(x_train=x_train, x_val=x_val, y_val=val_data['labels'], 
+            n_samples=n_samples_val, n_trials=n_trials_val)
 
-    with open(out_txt, "a") as file:
-        file.write(f"\nEP GP\ttraining_time={training_time}\t{evaluation_dict}")
-    
-    if n_params<=2:
+        with open(out_txt, "a") as file:
+            file.write(f"\nEP GP\ttraining_time={training_time}\t{evaluation_dict}")
 
-        ax = plot_posterior_ax(ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list,  
-            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='EP GP', legend=None,
-            palette=palette)
+    except:
+        print("\nEP is unfeasible on this dataset.")
+
+    df = pd.concat([df, pd.DataFrame({
+        "params_idx":list(range(len(val_data["params"]))),
+        "uncertainty":evaluation_dict["uncertainty_area"],
+        "model":"EP GP"
+        })], ignore_index=True)    
+
+    # if args.method=="lineplot":
+    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=evaluation_dict["uncertainty_area"], ax=ax, 
+    #         label="EP GP", palette=palette)
+
+    # elif args.method=="boxplot":
+    #     sns.boxplot(y=evaluation_dict["uncertainty_area"], ax=ax, label="EP GP", palette=palette)
 
     print(f"\nSVI GP model:")
 
@@ -116,11 +125,18 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     with open(out_txt, "a") as file:
         file.write(f"\nSVI GP\ttraining_time={training_time}\t{evaluation_dict}")
 
-    if n_params<=2:
+    # if args.method=="lineplot":
+    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=evaluation_dict["uncertainty_area"], ax=ax, 
+    #         label="SVI GP", palette=palette)
 
-        ax = plot_posterior_ax(ax=ax, ax_idxs=[1,2], params_list=params_list, math_params_list=math_params_list,  
-            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='SVI GP', legend=None,
-            palette=palette)
+    # elif args.method=="boxplot":
+    #     sns.boxplot(y=evaluation_dict["uncertainty_area"], ax=ax, label="SVI GP", palette=palette)
+
+    df = pd.concat([df, pd.DataFrame({
+        "params_idx":list(range(len(val_data["params"]))),
+        "uncertainty":evaluation_dict["uncertainty_area"],
+        "model":"SVI GP"
+        })], ignore_index=True)
 
     print(f"\nSVI BNN model:")
 
@@ -138,22 +154,62 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     with open(out_txt, "a") as file:
         file.write(f"\nSVI BNN\ttraining_time={training_time}\t{evaluation_dict}")
 
-    if n_params<=2:
+    # if args.method=="lineplot":
+    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=evaluation_dict["uncertainty_area"], ax=ax, 
+    #         label="SVI BNN", palette=palette)
 
-        ax = plot_posterior_ax(ax=ax, ax_idxs=[2,3], params_list=params_list, math_params_list=math_params_list,  
-            train_data=train_data, test_data=val_data, post_mean=post_mean, q1=q1, q2=q2, title='SVI BNN', legend='auto',
-            palette=palette)
+    # elif args.method=="boxplot":
+    #     sns.boxplot(y=evaluation_dict["uncertainty_area"], ax=ax, label="SVI BNN", palette=palette)
 
-        ### plot validation
+    df = pd.concat([df, pd.DataFrame({
+        "params_idx":list(range(len(val_data["params"]))),
+        "uncertainty":evaluation_dict["uncertainty_area"],
+        "model":"SVI BNN"
+        })], ignore_index=True)
 
-        ax = plot_validation_ax(ax=ax, params_list=params_list, math_params_list=math_params_list, 
-            test_data=val_data, val_data=val_data, z=1.96, palette=palette)
+    ### plot validation
 
-        ### save plot
+    x_val, y_val_bernoulli = val_data['params'], val_data['labels']
+    p = y_val_bernoulli.mean(1).flatten()
+    sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val_bernoulli]
+    std = np.sqrt(sample_variance).flatten()
+    errors = (1.96*std)/np.sqrt(n_trials_val)
 
-        plt.tight_layout()
-        plt.close()
-        os.makedirs(os.path.join(plots_path), exist_ok=True)
+    # if args.method=="lineplot":
+    #     sns.lineplot(x=list(range(len(val_data["params"]))), y=2*errors, ax=ax, label="Validation", 
+    #         palette=palette)
+    #     ax.set(xlabel="Parameters index")
 
-        plot_filename = train_filename if val_filename is None else val_filename
-        fig.savefig(os.path.join(plots_path, f"{plot_filename}.png"))
+    # elif args.method=="boxplot":
+    #     sns.boxplot(y=2*errors, ax=ax, label="Validation", palette=palette)
+
+    df = pd.concat([df, pd.DataFrame({
+        "params_idx":list(range(len(val_data["params"]))),
+        "uncertainty":2*errors,
+        "model":"Validation"
+        })], ignore_index=True)
+
+    ### lineplot
+
+    fig, ax = plt.subplots(figsize=(5, 3), dpi=150, sharex=True, sharey=True)
+    sns.lineplot(data=df, x="params_idx", y="uncertainty", ax=ax, hue="model", palette=palette)
+    ax.set_xlabel("Param. index")
+    ax.set_ylabel("Uncertainty")
+
+    plt.tight_layout()
+    plt.close()
+    os.makedirs(os.path.join(plots_path), exist_ok=True)
+    fig.savefig(os.path.join(plots_path, f"{val_filename}_uncertainty_lineplot.png"))
+
+    ### boxplot
+
+    fig, ax = plt.subplots(figsize=(5, 3), dpi=150, sharex=True, sharey=True)
+    sns.boxplot(data=df, x="model", y="uncertainty", ax=ax, palette=palette, dodge=False, showfliers=False)
+    ax.set_xlabel("Model")
+    ax.set_ylabel("Uncertainty")
+
+    plt.tight_layout()
+    plt.close()
+    os.makedirs(os.path.join(plots_path), exist_ok=True)
+    fig.savefig(os.path.join(plots_path, f"{val_filename}_uncertainty_boxplot.png"))
+

@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 sys.path.append(".")
 from paths import *
-from plot_utils import plot_posterior
+from posterior_plot_utils import plot_posterior
 from SVI_GPs.variational_GP import GPmodel
 from data_utils import normalize_columns, get_tensor_data
 

@@ -10,7 +10,7 @@ import pickle5 as pickle
 sys.path.append(".")
 from paths import *
 from SVI_BNNs.bnn import BNN_smMC
-from plot_utils import plot_posterior
+from posterior_plot_utils import plot_posterior
 
 random.seed(0)
 np.random.seed(0)

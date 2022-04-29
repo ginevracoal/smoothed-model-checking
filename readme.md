@@ -48,11 +48,11 @@ python SVI_GPs/train_gp.py
 python SVI_BNNs/train_bnn.py
 ```
 
-Plot final comparison between the trained models and get summary statistics:
+Plot final comparisons between the trained models and get summary statistics:
 ```
-python plot_comparison.py
+python plot_satisfaction.py
 ```
 
-Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/comparison_table.txt`.
+Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/evaluation_out.txt`.
 
 To reproduce plots from the paper simply run `./exec.sh`.

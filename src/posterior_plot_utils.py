@@ -34,8 +34,8 @@ def plot_posterior_ax(ax, ax_idxs, params_list, math_params_list, train_data, te
         p1, p2 = params_list[0], params_list[1]
 
         data = pd.DataFrame({p1:x_test[:,0],p2:x_test[:,1],'posterior_preds':post_mean})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
+        data[p1] = data[p1].apply(lambda x: format(float(x),".3f"))
+        data[p2] = data[p2].apply(lambda x: format(float(x),".3f"))
         pivot_data = data.pivot(p1, p2, "posterior_preds")
         pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
         sns.heatmap(pivot_data, ax=axis, label=f'{title} posterior preds')
@@ -92,8 +92,8 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
         p1, p2 = params_list[0], params_list[1]
 
         data = pd.DataFrame({p1:x_val[:,0],p2:x_val[:,1],'val_counts':y_val.flatten()/n_trials_val})
-        data[p1] = data[p1].apply(lambda x: format(float(x),".2f"))
-        data[p2] = data[p2].apply(lambda x: format(float(x),".2f"))
+        data[p1] = data[p1].apply(lambda x: format(float(x),".3f"))
+        data[p2] = data[p2].apply(lambda x: format(float(x),".3f"))
         pivot_data = data.pivot(p1, p2, "val_counts")
         pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
         sns.heatmap(pivot_data, ax=axis, label='Validation')

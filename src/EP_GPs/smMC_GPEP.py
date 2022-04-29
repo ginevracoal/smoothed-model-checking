@@ -73,16 +73,10 @@ class smMC_GPEP(object):
         post_mean = self.getProbability(mean, variance)
         return post_mean, q1, q2
 
-    def fit(self, x_train, y_train, n_trajectories, max_training_samples=100000):
+    def fit(self, x_train, y_train, n_trajectories):
         start = time.time()
-
         aa, bb = self.getDefaultHyperarametersRBF(x_train, y_train)
-        objectivefunctionWrap = lambda x: self.objectivefunction(x_train, y_train, n_trajectories=n_trajectories, l=x)
-        
-        if len(x_train)>max_training_samples: 
-            idxs = np.linspace(0,len(x_train)-1,max_training_samples).astype(int)
-            x_train = x_train[idxs]
-            y_train = y_train[idxs]
+        objectivefunctionWrap = lambda x: self.objectivefunction(x_train_tmp, y_train_tmp, n_trajectories=n_trajectories, l=x)
 
         res = minimize(objectivefunctionWrap, bb, method='L-BFGS-B', bounds=((0.5 * bb, 2 * bb),))
         r = RBF(res.x)
@@ -430,7 +424,8 @@ class smMC_GPEP(object):
         print(f"Mean squared error: {mse}")
         print(f"Validation accuracy: {val_accuracy} %")
         print(f"Average uncertainty area:  {avg_uncertainty_area}\n")
-        evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, "avg_uncertainty_area":avg_uncertainty_area}
+        evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, 
+            "uncertainty_area":ci_uncertainty_area, "avg_uncertainty_area":avg_uncertainty_area}
 
         evaluation_time = execution_time(start=start, end=time.time())
         print(f"Evaluation time = {evaluation_time}")
