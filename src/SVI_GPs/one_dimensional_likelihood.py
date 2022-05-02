@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
+import sys
 import math
 import torch
 import warnings
 from copy import deepcopy
 from abc import ABC, abstractmethod
-
-from quadrature import GaussHermiteQuadrature1D
 from gpytorch.likelihoods.likelihood import Likelihood
+
+sys.path.append(".")
+from SVI_GPs.quadrature import GaussHermiteQuadrature1D
 
 
 class _OneDimensionalLikelihood(Likelihood, ABC):

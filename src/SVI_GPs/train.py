@@ -55,12 +55,12 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         variational_strategy=args.variational_strategy, likelihood=args.likelihood)
 
     if args.load:
-        model.load(filepath=models_path, filename=out_filename)
+        model.load(filepath=models_path, filename=out_filename, training_device=args.device)
 
     else:
         model.train_gp(train_data=train_data, n_epochs=args.n_epochs, lr=args.lr, batch_size=args.batch_size,
             device=args.device)
-        model.save(filepath=models_path, filename=out_filename)
+        model.save(filepath=models_path, filename=out_filename, training_device=args.device)
 
     print(f"\n=== SVI GP Validation {val_filename} ===")
 

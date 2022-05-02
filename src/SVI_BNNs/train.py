@@ -51,11 +51,11 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         input_size=len(params_list), n_hidden=args.n_hidden, architecture_name=args.architecture)
 
     if args.load:
-        bnn_smmc.load(filepath=models_path, filename=out_filename)
+        bnn_smmc.load(filepath=models_path, filename=out_filename, training_device=args.device)
     else:
         bnn_smmc.train(train_data=train_data, n_epochs=args.n_epochs, lr=args.lr, batch_size=args.batch_size,
             device=args.device)
-        bnn_smmc.save(filepath=models_path, filename=out_filename)
+        bnn_smmc.save(filepath=models_path, filename=out_filename, training_device=args.device)
 
     print(f"\n=== SVI BNN Validation {val_filename} ===")
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import math
-
-import numpy as np
 import torch
+import numpy as np
 from torch.nn import Module
 
 from gpytorch import settings

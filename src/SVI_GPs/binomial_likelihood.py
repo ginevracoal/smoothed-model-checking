@@ -1,8 +1,11 @@
+import sys
 import torch
 import warnings
 from gpytorch.functions import log_normal_cdf
 from gpytorch.distributions import base_distributions
-from one_dimensional_likelihood import _OneDimensionalLikelihood
+
+sys.path.append(".")
+from SVI_GPs.one_dimensional_likelihood import _OneDimensionalLikelihood
 
 
 class BinomialLikelihood(_OneDimensionalLikelihood):

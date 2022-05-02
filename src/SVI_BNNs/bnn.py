@@ -226,14 +226,14 @@ class BNN_smMC(PyroModule):
         self.training_time = training_time
         return self, training_time
 
-    def save(self, filepath, filename):
+    def save(self, filepath, filename, training_device):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         param_store = pyro.get_param_store()
         print(f"\nlearned params = {param_store}")
         param_store.save(os.path.join(filepath, filename+".pt"))
 
-        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"w")
+        file = open(os.path.join(filepath, f"{filename}_training_time_{training_device}.txt"),"w")
         file.writelines(self.training_time)
         file.close()
 
@@ -246,14 +246,14 @@ class BNN_smMC(PyroModule):
             plt.savefig(os.path.join(filepath, filename+"_loss.png"))
             plt.close()          
 
-    def load(self, filepath, filename):
+    def load(self, filepath, filename, training_device):
 
         param_store = pyro.get_param_store()
         param_store.load(os.path.join(filepath, filename+".pt"))
         for key, value in param_store.items():
             param_store.replace_param(key, value, value)
 
-        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"r+")
+        file = open(os.path.join(filepath, f"{filename}_training_time_{training_device}.txt"),"r+")
         training_time = file.read()
         print(f"\nTraining time = {training_time}")
         return training_time
