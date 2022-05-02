@@ -95,7 +95,12 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     
     print(f"\nEP GP model:")
 
-    try:
+    # try:
+
+    if n_params>5:
+        print("\nEP is unfeasible on this dataset.")
+
+    else:
 
         out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}"
         smc = smMC_GPEP()
@@ -108,9 +113,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
         with open(out_txt, "a") as file:
             file.write(f"\nEP GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
-
-    except:
-        print("\nEP is unfeasible on this dataset.")
     
     if n_params<=2:
 

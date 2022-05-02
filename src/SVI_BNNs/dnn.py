@@ -89,7 +89,9 @@ class DeterministicNetwork(nn.Module):
             correct_predictions = 0.0
 
             for x_batch, y_batch in train_loader:
-                
+                x_batch = x_batch.to(device)
+                y_batch = y_batch.to(device)
+
                 optimizer.zero_grad()
                 outputs = self.forward(x_batch, device)
                 outputs = nnf.sigmoid(outputs)

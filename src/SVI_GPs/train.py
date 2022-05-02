@@ -39,7 +39,7 @@ models_path = os.path.join(models_path, "SVI_GPs/")
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
     if len(params_list)==6:
-        args.epochs = 100
+        args.epochs = 1000
         args.batch_size = 5000
 
     print(f"\n=== SVI GP Training {train_filename} ===")
