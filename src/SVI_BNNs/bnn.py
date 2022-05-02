@@ -184,8 +184,8 @@ class BNN_smMC(PyroModule):
         y_train = y_train.unsqueeze(1)
 
         self.to(device)
-        x_train = x_train.to(device)
-        y_train = y_train.to(device)
+        # x_train = x_train.to(device)
+        # y_train = y_train.to(device)
 
         dataset = TensorDataset(x_train, y_train) 
         train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
@@ -207,6 +207,8 @@ class BNN_smMC(PyroModule):
         for j in tqdm(range(n_epochs)):
             loss = 0
             for x_batch, y_batch in train_loader:
+                x_batch = x_batch.to(device)
+                y_batch = y_batch.to(device)
                 loss += svi.step(x_batch, y_batch)
 
             loss = loss/len(x_train)

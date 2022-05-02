@@ -411,6 +411,8 @@ class smMC_GPEP(object):
         sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val]
         val_std = np.sqrt(sample_variance).flatten()
         validation_ci = (satisfaction_prob-(z*val_std)/np.sqrt(n_trials),satisfaction_prob+(z*val_std)/np.sqrt(n_trials))
+        
+        q1[q1<10e-6] = 0
         estimated_ci = (q1,q2)
         non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci)>0)
         val_accuracy = 100*non_empty_intersections/n_samples

@@ -6,7 +6,7 @@ import numpy as np
 def intervals_intersection(a,b):
     min_right = np.minimum(a[1],b[1])
     max_left = np.maximum(a[0],b[0])
-    return np.maximum(0, min_right-max_left)
+    return min_right>=max_left
 
 def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96, alpha1=0.025, alpha2=0.975):
 
@@ -24,8 +24,6 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     assert satisfaction_prob.max()<=1
 
     post_mean = post_samples.mean(0).squeeze()
-    # post_std = post_samples.std(0).squeeze()
-    # print(satisfaction_prob.shape, post_mean.shape)
     assert satisfaction_prob.shape == post_mean.shape
 
     q1, q2 = np.quantile(post_samples, q=[alpha1, alpha2], axis=0)
@@ -34,8 +32,11 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
     sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val]
     val_std = np.sqrt(sample_variance).flatten()
     validation_ci = (satisfaction_prob-(z*val_std)/np.sqrt(n_trials),satisfaction_prob+(z*val_std)/np.sqrt(n_trials))
-    estimated_ci = (q1,q2)
-    non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci)>0)
+    
+    q1[q1<10e-6] = 0
+    estimated_ci = (q1, q2)
+
+    non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci))
     val_accuracy = 100*non_empty_intersections/n_samples
     assert val_accuracy <= 100
 

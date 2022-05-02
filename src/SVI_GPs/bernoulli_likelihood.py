@@ -2,7 +2,7 @@ import torch
 import warnings
 from gpytorch.functions import log_normal_cdf
 from gpytorch.distributions import base_distributions
-from gpytorch.likelihoods.likelihood import _OneDimensionalLikelihood
+from one_dimensional_likelihood import _OneDimensionalLikelihood
 
 
 class BernoulliLikelihood(_OneDimensionalLikelihood):

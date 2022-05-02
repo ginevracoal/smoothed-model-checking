@@ -141,6 +141,8 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
         else:
             sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax, label='Posterior', palette=palette)
             ax.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
+            plt.xlim(0.175, None)
+            plt.ylim(None, 0.01)
             
             x_val, y_val_bernoulli = val_data['params'], val_data['labels']
 

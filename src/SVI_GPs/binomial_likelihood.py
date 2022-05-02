@@ -2,7 +2,7 @@ import torch
 import warnings
 from gpytorch.functions import log_normal_cdf
 from gpytorch.distributions import base_distributions
-from gpytorch.likelihoods.likelihood import _OneDimensionalLikelihood
+from one_dimensional_likelihood import _OneDimensionalLikelihood
 
 
 class BinomialLikelihood(_OneDimensionalLikelihood):
@@ -29,7 +29,7 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
 
     def expected_log_prob(self, observations, function_dist, *params, **kwargs):
         flat_obs = observations.flatten()
-        n = torch.tensor([self.n_trials for _ in range(len(flat_obs))], dtype=torch.float32)
+        n = torch.tensor([self.n_trials for _ in range(len(flat_obs))], dtype=torch.float32).to(flat_obs.device)
 
         # expected log likelihood over the variational GP distribution
 
@@ -39,6 +39,5 @@ class BinomialLikelihood(_OneDimensionalLikelihood):
             return log_bin_coeff+second_log_trm
 
         log_prob = self.quadrature(log_prob_lambda, function_dist)
-
         return log_prob
 

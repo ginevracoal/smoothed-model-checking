@@ -29,7 +29,7 @@ class GPmodel(ApproximateGP):
 
     def __init__(self, inducing_points, likelihood='binomial', variational_distribution='cholesky', 
         variational_strategy='default', learn_inducing_locations=False):
-        
+
         learn_inducing_locations = True if len(inducing_points) > 1000 else False
 
         if len(inducing_points)>1000:
@@ -91,7 +91,7 @@ class GPmodel(ApproximateGP):
             plt.savefig(os.path.join(filepath, filename+"_loss.png"))
             plt.close()   
 
-    def train_gp(self, train_data, n_epochs, lr, batch_size):
+    def train_gp(self, train_data, n_epochs, lr, batch_size, device="cpu"):
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
@@ -106,6 +106,8 @@ class GPmodel(ApproximateGP):
 
         else:
             raise AttributeError
+
+        self.to(device)
 
         self.train()
         likelihood.train()
@@ -125,6 +127,8 @@ class GPmodel(ApproximateGP):
 
         for i in tqdm(range(n_epochs)):
             for x_batch, y_batch in train_loader:
+                x_batch = x_batch.to(device)
+                y_batch = y_batch.to(device)
                 optimizer.zero_grad()
                 output = self(x_batch) # var_strategy (x_batch)
                 loss = -elbo(output, y_batch)
@@ -133,7 +137,7 @@ class GPmodel(ApproximateGP):
 
             if i % 50 == 0:
                 print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
-                loss_history.append(loss.detach().numpy())
+                loss_history.append(loss.detach().cpu().numpy())
 
         training_time = execution_time(start=start, end=time.time())
         print("\nTraining time =", training_time)
@@ -146,7 +150,7 @@ class GPmodel(ApproximateGP):
 
     def posterior_predictive(self, x_train, x_test, n_posterior_samples):
         min_x, max_x, _ = normalize_columns(x_train, return_minmax=True)
-        normalized_x = normalize_columns(x_test, min_x=min_x, max_x=max_x) 
+        normalized_x = normalize_columns(x_test, min_x=min_x, max_x=max_x)
 
         posterior = self(normalized_x)
         post_samples = posterior.sample(sample_shape=torch.Size((n_posterior_samples,)))
@@ -155,7 +159,7 @@ class GPmodel(ApproximateGP):
         post_samples = torch.tensor(post_samples)
         return post_samples
 
-    def evaluate(self, train_data, n_posterior_samples, val_data=None):
+    def evaluate(self, train_data, n_posterior_samples, val_data=None, device="cpu"):
 
         random.seed(0)
         np.random.seed(0)
@@ -174,6 +178,11 @@ class GPmodel(ApproximateGP):
         else:
             x_train = get_binomial_data(train_data)[0]
             x_val, y_val, n_samples, n_trials = get_tensor_data(val_data)
+
+        self.to(device)
+        x_train = x_train.to(device)
+        x_val = x_val.to(device)
+        y_val = y_val.to(device)
 
         with torch.no_grad():
 

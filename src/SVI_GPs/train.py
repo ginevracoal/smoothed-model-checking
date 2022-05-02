@@ -29,6 +29,7 @@ parser.add_argument("--batch_size", default=100, type=int, help="Batch size")
 parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 args = parser.parse_args()
 print(args)
 
@@ -57,7 +58,8 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         model.load(filepath=models_path, filename=out_filename)
 
     else:
-        model.train_gp(train_data=train_data, n_epochs=args.n_epochs, lr=args.lr, batch_size=args.batch_size)
+        model.train_gp(train_data=train_data, n_epochs=args.n_epochs, lr=args.lr, batch_size=args.batch_size,
+            device=args.device)
         model.save(filepath=models_path, filename=out_filename)
 
     print(f"\n=== SVI GP Validation {val_filename} ===")
@@ -66,7 +68,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         val_data = pickle.load(handle)
     
     post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
-        n_posterior_samples=args.n_posterior_samples)
+        n_posterior_samples=args.n_posterior_samples, device=args.device)
 
     if len(params_list)<=2:
 
