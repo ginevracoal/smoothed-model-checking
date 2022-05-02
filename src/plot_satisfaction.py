@@ -34,7 +34,8 @@ parser.add_argument("--svi_bnn_lr", default=0.001, type=float, help="Learning ra
 parser.add_argument("--svi_bnn_n_hidden", default=30, type=int, help="Size of hidden layers")
 parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
-parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
+parser.add_argument("--train_device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
+parser.add_argument("--eval_device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 args = parser.parse_args()
 print(args)
 
@@ -95,8 +96,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     
     print(f"\nEP GP model:")
 
-    # try:
-
     if n_params>5:
         print("\nEP is unfeasible on this dataset.")
 
@@ -127,10 +126,11 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     inducing_points = normalize_columns(get_tensor_data(train_data)[0])
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.svi_gp_variational_distribution,
         variational_strategy=args.svi_gp_variational_strategy, likelihood=args.svi_gp_likelihood)
-    training_time = model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename, training_device=args.device)
+    training_time = model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename, 
+        training_device=args.train_device)
         
     post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
-        n_posterior_samples=args.n_posterior_samples)
+        n_posterior_samples=args.n_posterior_samples, device=args.eval_device)
 
     with open(out_txt, "a") as file:
         file.write(f"\nSVI GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
@@ -149,10 +149,11 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, likelihood=args.svi_bnn_likelihood,
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
-    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename, training_device=args.device)
+    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename, 
+        training_device=args.train_device)
 
     post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
-        n_posterior_samples=args.n_posterior_samples)
+        n_posterior_samples=args.n_posterior_samples, device=args.eval_device)
 
     with open(out_txt, "a") as file:
         file.write(f"\nSVI BNN\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")

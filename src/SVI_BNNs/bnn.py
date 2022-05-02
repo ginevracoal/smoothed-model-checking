@@ -231,7 +231,7 @@ class BNN_smMC(PyroModule):
 
         param_store = pyro.get_param_store()
         print(f"\nlearned params = {param_store}")
-        param_store.save(os.path.join(filepath, filename+".pt"))
+        param_store.save(os.path.join(filepath, filename+"_"+training_device+".pt"))
 
         file = open(os.path.join(filepath, f"{filename}_training_time_{training_device}.txt"),"w")
         file.writelines(self.training_time)
@@ -249,7 +249,7 @@ class BNN_smMC(PyroModule):
     def load(self, filepath, filename, training_device):
 
         param_store = pyro.get_param_store()
-        param_store.load(os.path.join(filepath, filename+".pt"))
+        param_store.load(os.path.join(filepath, filename+"_"+training_device+".pt"))
         for key, value in param_store.items():
             param_store.replace_param(key, value, value)
 

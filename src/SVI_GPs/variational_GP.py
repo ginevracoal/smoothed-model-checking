@@ -66,7 +66,7 @@ class GPmodel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
     def load(self, filepath, filename, training_device):
-        state_dict = torch.load(os.path.join(filepath, filename+".pth"))
+        state_dict = torch.load(os.path.join(filepath, filename+"_"+training_device+".pth"))
         self.load_state_dict(state_dict)
 
         file = open(os.path.join(filepath, f"{filename}_training_time_{training_device}.txt"),"r+")
@@ -76,7 +76,7 @@ class GPmodel(ApproximateGP):
 
     def save(self, filepath, filename, training_device):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        torch.save(self.state_dict(), os.path.join(filepath, filename+".pth"))
+        torch.save(self.state_dict(), os.path.join(filepath, filename+"_"+training_device+".pth"))
 
         file = open(os.path.join(filepath, f"{filename}_training_time_{training_device}.txt"),"w")
         file.writelines(self.training_time)

@@ -33,7 +33,8 @@ parser.add_argument("--svi_bnn_lr", default=0.001, type=float, help="Learning ra
 parser.add_argument("--svi_bnn_n_hidden", default=30, type=int, help="Size of hidden layers")
 parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
-parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
+parser.add_argument("--train_device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
+parser.add_argument("--eval_device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 args = parser.parse_args()
 print(args)
 
@@ -42,20 +43,10 @@ sns.set_style("darkgrid")
 sns.set_palette(palette)
 matplotlib.rc('font', **{'size':9, 'weight' : 'bold'})
 
-out_txt = os.path.join(plots_path, "evaluation_out.txt")
-try:
-    os.remove(out_txt)
-except OSError:
-    file = open(out_txt,"w")
-    file.writelines(args.__dict__)
-
 
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
     df = pd.DataFrame()
-
-    with open(out_txt, "a") as file:
-        file.write(f"\n\nValidation set: {val_filename}\n")
 
     print(f"\n=== Eval on {val_filename} ===")
 
@@ -80,9 +71,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     n_trials_val = get_tensor_data(val_data)[3]
     errors = (1.96*std)/np.sqrt(n_trials_val)
 
-    with open(out_txt, "a") as file:
-        file.write(f"\nValidation avg_unc={np.mean(2*errors)}")
-
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
         "uncertainty":2*errors,
@@ -104,9 +92,6 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         post_mean, q1, q2, evaluation_dict = smc.eval_gp(x_train=x_train, x_val=x_val, y_val=val_data['labels'], 
             n_samples=n_samples_val, n_trials=n_trials_val)
 
-        with open(out_txt, "a") as file:
-            file.write(f"\nEP GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
-
         df = pd.concat([df, pd.DataFrame({
             "params_idx":list(range(len(val_data["params"]))),
             "uncertainty":evaluation_dict["uncertainty_area"],
@@ -123,13 +108,11 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     inducing_points = normalize_columns(get_tensor_data(train_data)[0])
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.svi_gp_variational_distribution,
         variational_strategy=args.svi_gp_variational_strategy, likelihood=args.svi_gp_likelihood)
-    training_time = model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename,  training_device=args.device)
+    training_time = model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename,  
+        training_device=args.train_device)
         
     post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
-        n_posterior_samples=args.n_posterior_samples)
-
-    with open(out_txt, "a") as file:
-        file.write(f"\nSVI GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
+        n_posterior_samples=args.n_posterior_samples, device=args.eval_device)
 
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
@@ -145,13 +128,11 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, likelihood=args.svi_bnn_likelihood,
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
-    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename,  training_device=args.device)
+    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename, 
+        training_device=args.train_device)
 
     post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
-        n_posterior_samples=args.n_posterior_samples)
-
-    with open(out_txt, "a") as file:
-        file.write(f"\nSVI BNN\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
+        n_posterior_samples=args.n_posterior_samples, device=args.eval_device)
 
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
@@ -165,7 +146,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         ### lineplot
         fig, ax = plt.subplots(figsize=(5, 3), dpi=150, sharex=True, sharey=True)
         sns.lineplot(data=df, x="params_idx", y="uncertainty", ax=ax, hue="model", palette=palette)
-        ax.set_xlabel("Param. index")
+        ax.set_xlabel(f"{math_params_list[0]} index")
         ax.set_ylabel("Uncertainty")
 
         plt.tight_layout()
