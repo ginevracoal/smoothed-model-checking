@@ -73,10 +73,11 @@ class smMC_GPEP(object):
         post_mean = self.getProbability(mean, variance)
         return post_mean, q1, q2
 
-    def fit(self, x_train, y_train, n_trajectories):
+    def fit(self, x_train, y_train, n_trajectories, max_iters):
         start = time.time()
         aa, bb = self.getDefaultHyperarametersRBF(x_train, y_train)
-        objectivefunctionWrap = lambda x: self.objectivefunction(x_train, y_train, n_trajectories=n_trajectories, l=x)
+        objectivefunctionWrap = lambda x: self.objectivefunction(x_train, y_train, n_trajectories=n_trajectories, l=x,
+            max_iters=max_iters)
 
         res = minimize(objectivefunctionWrap, bb, method='L-BFGS-B', bounds=((0.5 * bb, 2 * bb),))
         r = RBF(res.x)
@@ -274,7 +275,7 @@ class smMC_GPEP(object):
         return -0.5 * np.log(np.pi) - log2 - 0.5 * z * z - np.log(z) + np.log(
             1 - 1 / z + 3 / z ** 4 - 15 / z ** 6 + 105 / z ** 8 - 945 / z ** 10)
 
-    def expectationPropagation(self, x_train, y_train, n_trajectories, tolerance, max_iters=1000):
+    def expectationPropagation(self, x_train, y_train, n_trajectories, tolerance, max_iters):
 
         print("\nEP:", end="")
         gauss = Gauss()
@@ -349,13 +350,13 @@ class smMC_GPEP(object):
         lengthScale = sum / dim
         return signal, lengthScale
 
-    def objectivefunction(self, x_train, y_train, n_trajectories, l):
+    def objectivefunction(self, x_train, y_train, n_trajectories, l, max_iters):
         r = RBF(l)
         self.kernel = r
-        return self.getMarginalLikelihood(x_train, y_train, n_trajectories)
+        return self.getMarginalLikelihood(x_train, y_train, n_trajectories, max_iters=max_iters)
 
-    def getMarginalLikelihood(self, x_train, y_train, n_trajectories):
-        gauss = self.expectationPropagation(x_train, y_train, n_trajectories, tolerance=1e-3)
+    def getMarginalLikelihood(self, x_train, y_train, n_trajectories, max_iters):
+        gauss = self.expectationPropagation(x_train, y_train, n_trajectories, tolerance=1e-3, max_iters=max_iters)
         return gauss.logZ
 
     def latentPrediction(self, x_train, x_test): # Rasmussen GPs p. 74
