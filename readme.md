@@ -13,9 +13,9 @@ checking the satisfaction probability of a certain property as a function of the
     - `Data_Generation/` generates dataset of pairs `(pameter, labels)` by generating CRN trajectories with respective STL boolean label. `labels` is a vector of length M of 0s and 1s, where M is the number of samples per parameter value.
     - `Data_Validation/` labels CRN trajectories wrt a STL requirement
     - `Data/WorkingDatasets` contains datasets and visualization plots
-- `src/EP_GPs/` implements Expectation Propagation on Gaussian Processes
-- `src/SVI_BNNs/` implements the Bayesian Neural Network model
-- `src/SVI_GPs/` implements the Gaussian Process model
+- `src/EP_GPs/` implements expectation propagation on Gaussian Processes
+- `src/SVI_BNNs/` implements stochastic variational inference on Bayesian Neural Networks
+- `src/SVI_GPs/` implements stochastic variational inference on Gaussian Processes
 
 ## Setup
 
