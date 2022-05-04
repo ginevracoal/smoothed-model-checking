@@ -103,7 +103,14 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\nSVI GP model:")
 
-    out_filename = f"svi_gp_{train_filename}_epochs={args.svi_gp_n_epochs}_lr={args.svi_gp_lr}_batch={args.svi_gp_batch_size}_{args.svi_gp_variational_distribution}_{args.svi_gp_variational_strategy}"
+    if len(params_list)==6:
+        svi_gp_n_epochs = 1000
+        svi_gp_batch_size = 5000
+    else:
+        svi_gp_n_epochs = args.svi_gp_n_epochs
+        svi_gp_batch_size = args.svi_gp_batch_size
+
+    out_filename = f"svi_gp_{train_filename}_epochs={svi_gp_n_epochs}_lr={args.svi_gp_lr}_batch={svi_gp_batch_size}_{args.svi_gp_variational_distribution}_{args.svi_gp_variational_strategy}"
 
     inducing_points = normalize_columns(get_tensor_data(train_data)[0])
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.svi_gp_variational_distribution,
@@ -122,9 +129,16 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\nSVI BNN model:")
 
+    if len(params_list)==6:
+        svi_bnn_n_epochs = 100
+        svi_bnn_batch_size = 5000
+    else:
+        svi_bnn_n_epochs = args.svi_bnn_n_epochs
+        svi_bnn_batch_size = args.svi_bnn_batch_size
+
     pyro.clear_param_store()
 
-    out_filename = f"svi_bnn_{train_filename}_epochs={args.svi_bnn_n_epochs}_lr={args.svi_bnn_lr}_batch={args.svi_bnn_batch_size}_hidden={args.svi_bnn_n_hidden}_{args.svi_bnn_architecture}"
+    out_filename = f"svi_bnn_{train_filename}_epochs={svi_bnn_n_epochs}_lr={args.svi_bnn_lr}_batch={svi_bnn_batch_size}_hidden={args.svi_bnn_n_hidden}_{args.svi_bnn_architecture}"
     
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, likelihood=args.svi_bnn_likelihood,
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
@@ -146,7 +160,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         ### lineplot
         fig, ax = plt.subplots(figsize=(5, 3), dpi=150, sharex=True, sharey=True)
         sns.lineplot(data=df, x="params_idx", y="uncertainty", ax=ax, hue="model", palette=palette)
-        ax.set_xlabel(f"{math_params_list[0]} index")
+        ax.set_xlabel(f"{math_params_list[0]}")
         ax.set_ylabel("Uncertainty")
 
         plt.tight_layout()

@@ -8,13 +8,14 @@ checking the satisfaction probability of a certain property as a function of the
 
 ## Project structure
 
-- `Datasets/` contains the code to generate training and validation sets
+- `src/Datasets/` contains the code to generate training and validation sets
     - `Models/` contains the specs of the CRN model and the config setting for the experiments
     - `Data_Generation/` generates dataset of pairs `(pameter, labels)` by generating CRN trajectories with respective STL boolean label. `labels` is a vector of length M of 0s and 1s, where M is the number of samples per parameter value.
     - `Data_Validation/` labels CRN trajectories wrt a STL requirement
     - `Data/WorkingDatasets` contains datasets and visualization plots
-- `BNNs/` implements the Bayesian Neural Network model
-- `GPs/` implements the Gaussian Process model
+- `src/EP_GPs/` implements Expectation Propagation on Gaussian Processes
+- `src/SVI_BNNs/` implements the Bayesian Neural Network model
+- `src/SVI_GPs/` implements the Gaussian Process model
 
 ## Setup
 
@@ -50,9 +51,10 @@ Comment out the unwanted lines to exclude them from computations.
 
 Train and evaluate EP GP, SVI GP and SVI BNN models:
 ```
-python EP_GPs/train_bnn.py
-python SVI_GPs/train_gp.py
-python SVI_BNNs/train_bnn.py
+cd src/
+python EP_GPs/train.py
+python SVI_GPs/train.py
+python SVI_BNNs/train.py
 ```
 
 Plot final comparisons between the trained models and get summary statistics:
@@ -69,6 +71,6 @@ python plot_uncertainty.py
 <img src="readme_plots/PrGeEx_DS_400samples_1000obs_k2k7_uncertainty_boxplot.png" width="300"/>
 
 
-Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/evaluation_out.txt`.
+Trained models are saved in `src/out/models/`, executions logs are saved in `src/out/logs/`, plots are saved in `src/out/plots/`, summary statistic are reported in `src/out/plots/evaluation_out_*.txt`.
 
 To reproduce all plots from the paper simply run `./exec.sh`.

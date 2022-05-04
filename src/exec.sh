@@ -4,9 +4,8 @@
 # settings #
 ############
 
-TRAIN_DEVICE="cpu"
-EVAL_DEVICE="cpu"
-N_POSTERIOR_SAMPLES=100
+DEVICE="cuda" # choose "cpu" or "cuda"
+N_POSTERIOR_SAMPLES=1000
 
 EP_GP_N_EPOCHS=3000
 
@@ -38,24 +37,24 @@ OUT="${LOGS}${DATE}_${TIME}_out.txt"
 
 # python SVI_BNNs/train.py --architecture=$SVI_BNN_ARCHITECTURE --batch_size=$SVI_BNN_BATCH_SIZE \
 # 	--n_epochs=$SVI_BNN_N_EPOCHS --lr=$SVI_BNN_LR --n_hidden=$SVI_BNN_N_HIDDEN \
-# 	--n_posterior_samples=$N_POSTERIOR_SAMPLES --device=$TRAIN_DEVICE >> $OUT 2>&1
+# 	--n_posterior_samples=$N_POSTERIOR_SAMPLES --device=$DEVICE >> $OUT 2>&1
 
-# python SVI_GPs/train.py --variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION --device=$TRAIN_DEVICE \
+# python SVI_GPs/train.py --variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION --device=$DEVICE \
 # 	--variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --batch_size=$SVI_GP_BATCH_SIZE \
 # 	--n_epochs=$SVI_GP_N_EPOCHS --lr=$SVI_GP_LR --n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
 
-# python plot_satisfaction.py --ep_gp_n_epochs=$EP_GP_N_EPOCHS \
-# 	--svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
-# 	--svi_gp_variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --svi_gp_batch_size=$SVI_GP_BATCH_SIZE \
-# 	--svi_gp_n_epochs=$SVI_GP_N_EPOCHS --svi_gp_lr=$SVI_GP_LR --svi_bnn_architecture=$SVI_BNN_ARCHITECTURE \
-# 	--svi_bnn_batch_size=$SVI_BNN_BATCH_SIZE --svi_bnn_n_epochs=$SVI_BNN_N_EPOCHS --svi_bnn_lr=$SVI_BNN_LR \
-# 	--svi_bnn_n_hidden=$SVI_BNN_N_HIDDEN --n_posterior_samples=$N_POSTERIOR_SAMPLES \
-# 	--train_device=$TRAIN_DEVICE --eval_device=$EVAL_DEVICE >> $OUT 2>&1
-
-python plot_uncertainty.py --ep_gp_n_epochs=$EP_GP_N_EPOCHS \
+python plot_satisfaction.py --ep_gp_n_epochs=$EP_GP_N_EPOCHS \
 	--svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
 	--svi_gp_variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --svi_gp_batch_size=$SVI_GP_BATCH_SIZE \
 	--svi_gp_n_epochs=$SVI_GP_N_EPOCHS --svi_gp_lr=$SVI_GP_LR --svi_bnn_architecture=$SVI_BNN_ARCHITECTURE \
 	--svi_bnn_batch_size=$SVI_BNN_BATCH_SIZE --svi_bnn_n_epochs=$SVI_BNN_N_EPOCHS --svi_bnn_lr=$SVI_BNN_LR \
 	--svi_bnn_n_hidden=$SVI_BNN_N_HIDDEN --n_posterior_samples=$N_POSTERIOR_SAMPLES \
-	--train_device=$TRAIN_DEVICE --eval_device=$EVAL_DEVICE >> $OUT 2>&1
+	--train_device=$DEVICE >> $OUT 2>&1
+
+# python plot_uncertainty.py --ep_gp_n_epochs=$EP_GP_N_EPOCHS \
+# 	--svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
+# 	--svi_gp_variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --svi_gp_batch_size=$SVI_GP_BATCH_SIZE \
+# 	--svi_gp_n_epochs=$SVI_GP_N_EPOCHS --svi_gp_lr=$SVI_GP_LR --svi_bnn_architecture=$SVI_BNN_ARCHITECTURE \
+# 	--svi_bnn_batch_size=$SVI_BNN_BATCH_SIZE --svi_bnn_n_epochs=$SVI_BNN_N_EPOCHS --svi_bnn_lr=$SVI_BNN_LR \
+# 	--svi_bnn_n_hidden=$SVI_BNN_N_HIDDEN --n_posterior_samples=$N_POSTERIOR_SAMPLES \
+# 	--train_device=$DEVICE >> $OUT 2>&1

@@ -31,7 +31,6 @@ parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
 parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 args = parser.parse_args()
-print(args)
 
 plots_path = os.path.join(plots_path, "SVI_GPs/")
 models_path = os.path.join(models_path, "SVI_GPs/")
@@ -39,8 +38,10 @@ models_path = os.path.join(models_path, "SVI_GPs/")
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
     if len(params_list)==6:
-        args.epochs = 1000
+        args.n_epochs = 1000
         args.batch_size = 5000
+
+    print(args)
 
     print(f"\n=== SVI GP Training {train_filename} ===")
 

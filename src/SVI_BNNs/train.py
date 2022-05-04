@@ -28,7 +28,6 @@ parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number
 parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 parser.add_argument("--load", default=False, type=eval)
 args = parser.parse_args()
-print(args)
 
 plots_path = os.path.join(plots_path, "SVI_BNNs/")
 models_path = os.path.join(models_path, "SVI_BNNs/")
@@ -37,8 +36,10 @@ models_path = os.path.join(models_path, "SVI_BNNs/")
 for filepath, train_filename, val_filename, params_list, math_params_list in case_studies:
 
     if len(params_list)==6:
-        args.epochs = 100
+        args.n_epochs = 100
         args.batch_size = 5000
+
+    print(args)
 
     print(f"\n=== SVI BNN Training {train_filename} ===")
 

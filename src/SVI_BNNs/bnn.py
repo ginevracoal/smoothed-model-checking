@@ -184,8 +184,6 @@ class BNN_smMC(PyroModule):
         y_train = y_train.unsqueeze(1)
 
         self.to(device)
-        # x_train = x_train.to(device)
-        # y_train = y_train.to(device)
 
         dataset = TensorDataset(x_train, y_train) 
         train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)

@@ -75,16 +75,16 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
 
                 for idx in range(len(ax)):
                     legend = 'auto' if idx==len(ax)-1 else None
-                    sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', 
+                    sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Test', 
                         legend=legend, palette=palette,  s=15)
                     ax[idx].errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', elinewidth=1,
-                        label='Validation')
+                        label='Test')
 
             else:
                 p = y_val_bernoulli.mean(1).flatten()
 
                 for idx in range(len(ax)):
-                    sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Validation', palette=palette, s=15)
+                    sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax[idx], label='Test', palette=palette, s=15)
 
     elif n_params==2:
 
@@ -96,8 +96,8 @@ def plot_validation_ax(ax, params_list, math_params_list, test_data, palette, va
         data[p2] = data[p2].apply(lambda x: format(float(x),".3f"))
         pivot_data = data.pivot(p1, p2, "val_counts")
         pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=axis, label='Validation')
-        axis.set_title("Validation set")
+        sns.heatmap(pivot_data, ax=axis, label='Test')
+        axis.set_title("Test set")
         axis.set_xlabel(math_params_list[0])
         axis.set_ylabel(math_params_list[1])
 
@@ -141,8 +141,6 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
         else:
             sns.lineplot(x=x_test.flatten(), y=post_mean, ax=ax, label='Posterior', palette=palette)
             ax.fill_between(x_test.flatten(), q1, q2, alpha=0.5)
-            plt.xlim(0.175, None)
-            plt.ylim(None, 0.01)
             
             x_val, y_val_bernoulli = val_data['params'], val_data['labels']
 
@@ -156,13 +154,13 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
                 std = np.sqrt(sample_variance).flatten()
                 errors = (z*std)/np.sqrt(n_trials_val)
 
-                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Validation', palette=palette, s=15)
-                ax.errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', elinewidth=1, label='Validation')
+                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Test', palette=palette, s=15)
+                ax.errorbar(x=x_val.flatten(), y=p.flatten(), yerr=errors, ls='None', elinewidth=1, label='Test')
 
             else:
                 p = y_val_bernoulli.mean(1).flatten()
                 
-                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Validation', palette=palette, s=15)
+                sns.scatterplot(x=x_val.flatten(), y=p.flatten(), ax=ax, label='Test', palette=palette, s=15)
 
     elif n_params==2:
         
@@ -174,8 +172,8 @@ def plot_posterior(params_list, math_params_list, train_data, test_data, post_me
         data[p2] = data[p2].apply(lambda x: format(float(x),".3f"))
         pivot_data = data.pivot(p1, p2, "val_counts")
         pivot_data = pivot_data.reindex(index=data[p1].drop_duplicates(), columns=data[p2].drop_duplicates())
-        sns.heatmap(pivot_data, ax=ax[0], label='validation pts')
-        ax[0].set_title("Validation set")
+        sns.heatmap(pivot_data, ax=ax[0], label='test pts')
+        ax[0].set_title("Test set")
         ax[0].set_xlabel(math_params_list[0])
         ax[0].set_ylabel(math_params_list[1])
 

@@ -95,7 +95,8 @@ class DeterministicNetwork(nn.Module):
                 optimizer.zero_grad()
                 outputs = self.forward(x_batch, device)
                 outputs = nnf.sigmoid(outputs)
-                loss = self.loss_func(likelihood=likelihood, probs=outputs, n_trials_train=n_trials_train, y_batch=y_batch)
+                loss = self.loss_func(likelihood=likelihood, probs=outputs, n_trials_train=n_trials_train, 
+                    y_batch=y_batch)
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
