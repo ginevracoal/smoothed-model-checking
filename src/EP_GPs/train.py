@@ -36,8 +36,8 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         smc.load(filepath=models_path, filename=out_filename)
 
     else:
-        cProfile.run("smc.fit(x_train, y_train, n_trials_train)")
-        # smc.fit(x_train, y_train, n_trials_train)
+        # cProfile.run("smc.fit(x_train, y_train, n_trials_train)")
+        smc.fit(x_train, y_train, n_trials_train)
         smc.save(filepath=models_path, filename=out_filename)
 
     print(f"\n=== EP GP Validation {val_filename} ===")
