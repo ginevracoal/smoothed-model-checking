@@ -73,7 +73,7 @@ class smMC_GPEP(object):
         post_mean = self.getProbability(mean, variance)
         return post_mean, q1, q2
 
-    def fit(self, x_train, y_train, n_trajectories, max_iters):
+    def fit(self, x_train, y_train, n_trajectories, max_iters=10000):
         start = time.time()
         aa, bb = self.getDefaultHyperarametersRBF(x_train, y_train)
         objectivefunctionWrap = lambda x: self.objectivefunction(x_train, y_train, n_trajectories=n_trajectories, l=x,
@@ -82,7 +82,7 @@ class smMC_GPEP(object):
         res = minimize(objectivefunctionWrap, bb, method='L-BFGS-B', bounds=((0.5 * bb, 2 * bb),))
         r = RBF(res.x)
         self.kernel = r
-        invC, mu_tilde, sigma_tilde = self.doTraining(x_train, y_train, n_trajectories=n_trajectories)
+        invC, mu_tilde, sigma_tilde = self.doTraining(x_train, y_train, n_trajectories=n_trajectories, max_iters=max_iters)
         self.invC=invC
         self.mu_tilde=mu_tilde
         self.sigma_tilde=sigma_tilde
@@ -91,8 +91,9 @@ class smMC_GPEP(object):
         print("\nTraining time =", training_time)
         self.training_time = training_time
 
-    def doTraining(self, x_train, y_train, n_trajectories):
-        gauss = self.expectationPropagation(x_train, y_train, n_trajectories=n_trajectories, tolerance=1e-6)
+    def doTraining(self, x_train, y_train, n_trajectories, max_iters):
+        gauss = self.expectationPropagation(x_train, y_train, n_trajectories=n_trajectories, tolerance=1e-6, 
+            max_iters=max_iters)
         v_tilde = gauss.Term[:, 0]
         tau_tilde = gauss.Term[:, 1]
         diag_sigma_tilde = 1 / tau_tilde

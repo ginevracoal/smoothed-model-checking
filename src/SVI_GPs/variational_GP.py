@@ -75,6 +75,7 @@ class GPmodel(ApproximateGP):
         return training_time
 
     def save(self, filepath, filename, training_device):
+        print(filepath)
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         torch.save(self.state_dict(), os.path.join(filepath, filename+"_"+training_device+".pth"))
 
@@ -135,14 +136,12 @@ class GPmodel(ApproximateGP):
                 loss.backward()
                 optimizer.step()
 
-                print(l)
-
             if i % 50 == 0:
                 print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
                 loss_history.append(loss.detach().cpu().numpy())
 
         learned_lenghtscale = self.covar_module._modules['base_kernel']._parameters['raw_lengthscale']
-        print("\nlearned_lenghtscale =", learned_lenghtscale)
+        print("\nlearned_lenghtscale =", learned_lenghtscale.item())
 
         training_time = execution_time(start=start, end=time.time())
         print("\nTraining time =", training_time)

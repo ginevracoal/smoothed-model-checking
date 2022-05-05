@@ -11,7 +11,6 @@ from posterior_plot_utils import plot_posterior
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--load", default=False, type=eval, help="If True load the model else train it")
-parser.add_argument("--n_epochs", default=3000, type=int, help="Max number of training iterations")
 args = parser.parse_args()
 
 plots_path = os.path.join(plots_path, "EP_GPs/")
@@ -23,7 +22,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     print(f"\n=== EP GP Training {train_filename} ===")
 
-    out_filename = f"ep_gp_{train_filename}_epochs={args.n_epochs}"
+    out_filename = f"ep_gp_{train_filename}"
 
     with open(os.path.join(data_path, filepath, train_filename+".pickle"), 'rb') as handle:
         train_data = pickle.load(handle)
@@ -37,7 +36,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     else:
         # cProfile.run("smc.fit(x_train, y_train, n_trials_train)")
-        smc.fit(x_train, y_train, n_trials_train, max_iters=args.n_epochs)
+        smc.fit(x_train, y_train, n_trials_train)
         smc.save(filepath=models_path, filename=out_filename)
 
     print(f"\n=== EP GP Validation {val_filename} ===")
