@@ -84,12 +84,18 @@ class GPmodel(ApproximateGP):
         file.close()
 
         if self.n_epochs >= 50:
-            fig = plt.figure()
-            plt.plot(np.arange(0,self.n_epochs,50), np.array(self.loss_history))
-            plt.title("loss")
+
+            fig,ax = plt.subplots()
+            ax.plot(np.arange(1,self.n_epochs,1), np.array(self.loss_history), color="red")
+            ax.set_ylabel("loss",color="red")
+
+            ax2=ax.twinx()
+            ax2.plot(np.arange(1,self.n_epochs,1), np.array(self.avg_variation_history), color="blue")
+            ax2.set_ylabel("avg variation",color="blue")
+
             plt.xlabel("epochs")
             plt.tight_layout()
-            plt.savefig(os.path.join(filepath, filename+"_loss.png"))
+            plt.savefig(os.path.join(filepath, filename+".png"))
             plt.close()   
 
     def train_gp(self, train_data, n_epochs, lr, batch_size, device="cpu"):
@@ -124,9 +130,21 @@ class GPmodel(ApproximateGP):
         print()
 
         loss_history = []
+        avg_variation_history = []
         start = time.time()
 
-        for i in tqdm(range(n_epochs)):
+        i = 0
+        avg_variation = torch.tensor(10)
+
+        mean_list = []
+        covar_list = []
+
+        # for i in tqdm(range(n_epochs)):
+        while avg_variation>10e-4 and i<n_epochs:
+
+            mean_list_new = []
+            covar_list_new = []
+
             for x_batch, y_batch in train_loader:
                 x_batch = x_batch.to(device)
                 y_batch = y_batch.to(device)
@@ -136,13 +154,27 @@ class GPmodel(ApproximateGP):
                 loss.backward()
                 optimizer.step()
 
-            print(self.mean_module.__dict__)
-            print(self.covar_module.__dict__)
-            exit()
+                mean_list_new.append(output.mean)
+                covar_list_new.append(output.covariance_matrix)
 
-            if i % 50 == 0:
-                print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
+            mean_list_new = torch.stack(mean_list_new)
+            covar_list_new = torch.stack(covar_list_new)
+
+            if i>0:
+                avg_mean_norm = torch.mean(torch.norm(mean_list-mean_list_new, p=float('inf')))
+                avg_covariance_norm = torch.mean(torch.norm(covar_list-covar_list_new, p=float('inf')))
+                avg_variation = avg_mean_norm+avg_covariance_norm
+
                 loss_history.append(loss.detach().cpu().numpy())
+                avg_variation_history.append(avg_variation.detach().cpu().numpy())
+
+            mean_list = mean_list_new
+            covar_list = covar_list_new
+
+            if i % 10 == 0:
+                print(f"Epoch {i}/{n_epochs} - Loss: {loss} - Avg variation: {avg_variation}")
+
+            i += 1
 
         learned_lenghtscale = self.covar_module._modules['base_kernel']._parameters['raw_lengthscale']
         print("\nlearned_lenghtscale =", learned_lenghtscale.item())
@@ -154,7 +186,8 @@ class GPmodel(ApproximateGP):
         self.training_time = training_time
 
         self.loss_history = loss_history
-        self.n_epochs = n_epochs
+        self.avg_variation_history = avg_variation_history
+        self.n_epochs = i
 
     def posterior_predictive(self, x_train, x_test, n_posterior_samples):
         min_x, max_x, _ = normalize_columns(x_train, return_minmax=True)
