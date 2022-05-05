@@ -19,12 +19,14 @@ checking the satisfaction probability of a certain property as a function of the
 
 ## Setup
 
-Python version 3.7.6
+Ubuntu version 18.04.06 LTS
+Python version 3.7.13
 
 Install virtual environment:
 ```
-python -m venv venv
-pip install -r requirements.txt
+apt-get install python3.7-venv
+python3.7 -m venv venv
+pip3.7 install -r requirements.txt
 ```
 
 ## Experiments

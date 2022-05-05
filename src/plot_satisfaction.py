@@ -19,7 +19,6 @@ from posterior_plot_utils import plot_posterior_ax, plot_validation_ax
 from data_utils import get_tensor_data, normalize_columns
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ep_gp_n_epochs", default=3000, type=int, help="Max number of training iterations")
 parser.add_argument("--svi_gp_likelihood", default='binomial', type=str, help='Choose bernoulli or binomial')
 parser.add_argument("--svi_gp_variational_distribution", default='cholesky', type=str, help="Variational distribution")
 parser.add_argument("--svi_gp_variational_strategy", default='default', type=str, help="Variational strategy")
@@ -101,7 +100,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
 
     else:
 
-        out_filename = f"ep_gp_{train_filename}_epochs={args.ep_gp_n_epochs}"
+        out_filename = f"ep_gp_{train_filename}"
         smc = smMC_GPEP()
         training_time = smc.load(filepath=os.path.join(models_path, "EP_GPs/"), filename=out_filename)
 

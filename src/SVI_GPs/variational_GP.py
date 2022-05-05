@@ -136,6 +136,10 @@ class GPmodel(ApproximateGP):
                 loss.backward()
                 optimizer.step()
 
+            print(self.mean_module.__dict__)
+            print(self.covar_module.__dict__)
+            exit()
+
             if i % 50 == 0:
                 print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
                 loss_history.append(loss.detach().cpu().numpy())
