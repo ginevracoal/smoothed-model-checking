@@ -11,7 +11,6 @@ from math import pi
 import torch.nn as nn
 from tqdm import tqdm
 from pyro import poutine
-import pickle5 as pickle
 import torch.optim as optim
 from pyro.nn import PyroModule
 import matplotlib.pyplot as plt

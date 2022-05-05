@@ -36,7 +36,7 @@ source venv/bin/activate
 
 ### Download training and validation datasets
 
-Download the available datasets in a folder `src/data/` from: https://mega.nz/folder/pbBFnYSJ#XXwzMHfJaV4G9xKx3NMIwg
+Download the available datasets in a folder `src/data/` (e.g.  `src/data/SIR/`) from: https://mega.nz/folder/pbBFnYSJ#XXwzMHfJaV4G9xKx3NMIwg
 
 Time needed to generate the data: https://www.dropbox.com/scl/fi/h3twljfitial1galoui9n/Datasets.paper?dl=0&rlkey=625cm5u25h1d4qqnwn1jbuw4g
 

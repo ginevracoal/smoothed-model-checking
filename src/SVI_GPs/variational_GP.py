@@ -131,13 +131,18 @@ class GPmodel(ApproximateGP):
                 y_batch = y_batch.to(device)
                 optimizer.zero_grad()
                 output = self(x_batch) # var_strategy (x_batch)
-                loss = -elbo(output, y_batch)
+                loss = -elbo(output, y_batch)   
                 loss.backward()
                 optimizer.step()
+
+                print(l)
 
             if i % 50 == 0:
                 print(f"Epoch {i}/{n_epochs} - Loss: {loss}")
                 loss_history.append(loss.detach().cpu().numpy())
+
+        learned_lenghtscale = self.covar_module._modules['base_kernel']._parameters['raw_lengthscale']
+        print("\nlearned_lenghtscale =", learned_lenghtscale)
 
         training_time = execution_time(start=start, end=time.time())
         print("\nTraining time =", training_time)
