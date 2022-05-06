@@ -2,9 +2,9 @@
 *.pickle
 *screenlog.0
 
-venv/
+*venv/
 *data/
-src/out/
+*out/
 
 
 

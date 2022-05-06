@@ -59,5 +59,6 @@ def evaluate_posterior_samples(y_val, post_samples, n_samples, n_trials, z=1.96,
 def execution_time(start, end):
     hours, rem = divmod(end - start, 3600)
     minutes, seconds = divmod(rem, 60)
-    time = f"{int(hours):0>2}:{int(minutes):0>2}:{int(seconds):05.4f}"
+    # time = f"{int(hours):0>2}:{int(minutes):0>2}:{int(seconds):05.4f}"
+    time = f"{int(hours):0>2}:{int(minutes):0>2}:{int(seconds):0>2}"
     return time

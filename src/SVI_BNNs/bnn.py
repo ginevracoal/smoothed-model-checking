@@ -145,8 +145,6 @@ class BNN_smMC(PyroModule):
             x_val = normalize_columns(x_val, min_x=min_x, max_x=max_x) 
             y_val = torch.tensor(val_data["labels"], dtype=torch.float32)
 
-        self.to(device)
-        x_train = x_train.to(device)
         x_val = x_val.to(device)
         y_val = y_val.to(device)
 
@@ -181,8 +179,6 @@ class BNN_smMC(PyroModule):
         self.n_trials_train = n_trials_train
         x_train = normalize_columns(x_train)
         y_train = y_train.unsqueeze(1)
-
-        self.to(device)
 
         dataset = TensorDataset(x_train, y_train) 
         train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
@@ -223,7 +219,7 @@ class BNN_smMC(PyroModule):
         self.training_time = training_time
         return self, training_time
 
-    def save(self, filepath, filename):
+    def save(self, filepath, filename, training_device):
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         param_store = pyro.get_param_store()
@@ -231,7 +227,7 @@ class BNN_smMC(PyroModule):
         param_store.save(os.path.join(filepath, filename+".pt"))
 
         file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"w")
-        file.writelines(self.training_time)
+        file.writelines(f"{self.training_time} {training_device}")
         file.close()
 
         if self.n_epochs >= 50:
@@ -243,12 +239,12 @@ class BNN_smMC(PyroModule):
             plt.savefig(os.path.join(filepath, filename+"_loss.png"))
             plt.close()          
 
-    def load(self, filepath, filename):
+    def load(self, filepath, filename, device="cpu"):
 
         param_store = pyro.get_param_store()
         param_store.load(os.path.join(filepath, filename+".pt"))
         for key, value in param_store.items():
-            param_store.replace_param(key, value, value)
+            param_store.replace_param(key, value.to(device), value)
 
         file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"r+")
         training_time = file.read()

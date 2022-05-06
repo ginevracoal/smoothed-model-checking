@@ -24,6 +24,7 @@ Python version 3.7.13
 
 Install virtual environment:
 ```
+cd src/
 apt-get install python3.7-venv
 python3.7 -m venv venv
 pip3.7 install -r requirements.txt

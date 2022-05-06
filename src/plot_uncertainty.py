@@ -139,7 +139,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, likelihood=args.svi_bnn_likelihood,
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
-    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename)
+    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename, device=args.device)
 
     post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
         n_posterior_samples=args.n_posterior_samples, device=args.device)

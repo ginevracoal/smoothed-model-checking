@@ -21,7 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--likelihood", default='binomial', type=str, help="Choose 'bernoulli' or 'binomial'")
 parser.add_argument("--architecture", default='3L', type=str, help="NN architecture")
 parser.add_argument("--batch_size", default=100, type=int, help="")
-parser.add_argument("--n_epochs", default=10000, type=int, help="Number of training iterations")
+parser.add_argument("--n_epochs", default=5000, type=int, help="Number of training iterations")
 parser.add_argument("--lr", default=0.001, type=float, help="Learning rate")
 parser.add_argument("--n_hidden", default=30, type=int, help="Size of hidden layers")
 parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
@@ -52,7 +52,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         input_size=len(params_list), n_hidden=args.n_hidden, architecture_name=args.architecture)
 
     if args.load:
-        bnn_smmc.load(filepath=models_path, filename=out_filename, training_device=args.device)
+        bnn_smmc.load(filepath=models_path, filename=out_filename, device=args.device)
     else:
         bnn_smmc.train(train_data=train_data, n_epochs=args.n_epochs, lr=args.lr, batch_size=args.batch_size,
             device=args.device)
