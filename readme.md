@@ -47,7 +47,7 @@ To generate new datasets update the configuration files `src/Datasets/Data_Gener
 
 ### Case studies
 
-`src/paths.py` contains the informations needed to perform training and evaluation on the several case studies.
+`src/settings.py` contains the informations needed to perform training and evaluation on the several case studies.
 Comment out the unwanted lines to exclude them from computations.
 
 ### Train and evaluate
