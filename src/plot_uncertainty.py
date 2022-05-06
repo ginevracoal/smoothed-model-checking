@@ -27,13 +27,12 @@ parser.add_argument("--svi_gp_lr", default=0.01, type=float, help="Learning rate
 parser.add_argument("--svi_bnn_likelihood", default='binomial', type=str, help="Choose 'bernoulli' or 'binomial'")
 parser.add_argument("--svi_bnn_architecture", default='3L', type=str, help="NN architecture")
 parser.add_argument("--svi_bnn_batch_size", default=100, type=int, help="Batch size")
-parser.add_argument("--svi_bnn_n_epochs", default=10000, type=int, help="Number of training iterations")
+parser.add_argument("--svi_bnn_n_epochs", default=5000, type=int, help="Number of training iterations")
 parser.add_argument("--svi_bnn_lr", default=0.001, type=float, help="Learning rate")
 parser.add_argument("--svi_bnn_n_hidden", default=30, type=int, help="Size of hidden layers")
 parser.add_argument("--n_posterior_samples", default=1000, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--plot_training_points", default=False, type=bool, help="")
-parser.add_argument("--train_device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
-parser.add_argument("--eval_device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
+parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 args = parser.parse_args()
 print(args)
 
@@ -114,11 +113,10 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     inducing_points = normalize_columns(get_tensor_data(train_data)[0])
     model = GPmodel(inducing_points=inducing_points, variational_distribution=args.svi_gp_variational_distribution,
         variational_strategy=args.svi_gp_variational_strategy, likelihood=args.svi_gp_likelihood)
-    training_time = model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename,  
-        training_device=args.train_device)
+    training_time = model.load(filepath=os.path.join(models_path, "SVI_GPs/"), filename=out_filename)
         
     post_mean, q1, q2, evaluation_dict = model.evaluate(train_data=train_data, val_data=val_data, 
-        n_posterior_samples=args.n_posterior_samples, device=args.eval_device)
+        n_posterior_samples=args.n_posterior_samples, device=args.device)
 
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
@@ -141,11 +139,10 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     
     bnn_smmc = BNN_smMC(model_name=filepath, list_param_names=params_list, likelihood=args.svi_bnn_likelihood,
         input_size=len(params_list), n_hidden=args.svi_bnn_n_hidden, architecture_name=args.svi_bnn_architecture)
-    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename, 
-        training_device=args.train_device)
+    training_time = bnn_smmc.load(filepath=os.path.join(models_path, "SVI_BNNs/"), filename=out_filename)
 
     post_mean, q1, q2, evaluation_dict = bnn_smmc.evaluate(train_data=train_data, val_data=val_data,
-        n_posterior_samples=args.n_posterior_samples, device=args.eval_device)
+        n_posterior_samples=args.n_posterior_samples, device=args.device)
 
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),

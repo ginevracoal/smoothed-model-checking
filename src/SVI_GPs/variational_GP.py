@@ -65,31 +65,32 @@ class GPmodel(ApproximateGP):
         covar = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean, covar)
 
-    def load(self, filepath, filename, training_device):
-        state_dict = torch.load(os.path.join(filepath, filename+"_"+training_device+".pth"))
+    def load(self, filepath, filename):
+        state_dict = torch.load(os.path.join(filepath, filename+".pth"))
         self.load_state_dict(state_dict)
 
-        file = open(os.path.join(filepath, f"{filename}_training_time_{training_device}.txt"),"r+")
+        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"r+")
         training_time = file.read()
         print(f"\nTraining time = {training_time}")
         return training_time
 
-    def save(self, filepath, filename, training_device):
+    def save(self, filepath, filename):
         print(filepath)
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        torch.save(self.state_dict(), os.path.join(filepath, filename+"_"+training_device+".pth"))
+        torch.save(self.state_dict(), os.path.join(filepath, filename+".pth"))
 
-        file = open(os.path.join(filepath, f"{filename}_training_time_{training_device}.txt"),"w")
+        file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"w")
         file.writelines(self.training_time)
         file.close()
 
         if self.n_epochs >= 50:
 
             fig,ax = plt.subplots()
-            ax.plot(np.arange(1,self.n_epochs,1), np.array(self.loss_history), color="red")
+            ax.plot(np.arange(0,self.n_epochs,1), np.array(self.loss_history), color="red")
             ax.set_ylabel("loss",color="red")
 
             ax2=ax.twinx()
+            n_avg_variation_pts = len(self.avg_variation_history)
             ax2.plot(np.arange(1,self.n_epochs,1), np.array(self.avg_variation_history), color="blue")
             ax2.set_ylabel("avg variation",color="blue")
 
@@ -134,13 +135,14 @@ class GPmodel(ApproximateGP):
         start = time.time()
 
         i = 0
-        avg_variation = torch.tensor(10)
+        prev_avg_norm = 1
+        avg_variation = torch.tensor(1)
 
         mean_list = []
         covar_list = []
 
         # for i in tqdm(range(n_epochs)):
-        while avg_variation>10e-4 and i<n_epochs:
+        while avg_variation>10e-6 and i<n_epochs:
 
             mean_list_new = []
             covar_list_new = []
@@ -157,16 +159,19 @@ class GPmodel(ApproximateGP):
                 mean_list_new.append(output.mean)
                 covar_list_new.append(output.covariance_matrix)
 
+            loss_history.append(loss.detach().cpu().numpy())
+
             mean_list_new = torch.stack(mean_list_new)
             covar_list_new = torch.stack(covar_list_new)
 
             if i>0:
-                avg_mean_norm = torch.mean(torch.norm(mean_list-mean_list_new, p=float('inf')))
-                avg_covariance_norm = torch.mean(torch.norm(covar_list-covar_list_new, p=float('inf')))
-                avg_variation = avg_mean_norm+avg_covariance_norm
+                avg_mean_norm = torch.mean(torch.norm(mean_list-mean_list_new, p=float('inf'), dim=1))
+                avg_covariance_norm = torch.mean(torch.norm(covar_list-covar_list_new, p=float('inf'), dim=1))
+                avg_norm = avg_mean_norm+avg_covariance_norm
 
-                loss_history.append(loss.detach().cpu().numpy())
+                avg_variation = torch.abs(prev_avg_norm-avg_norm)
                 avg_variation_history.append(avg_variation.detach().cpu().numpy())
+                prev_avg_norm = avg_norm
 
             mean_list = mean_list_new
             covar_list = covar_list_new

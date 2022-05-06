@@ -28,7 +28,7 @@ parser.add_argument("--load", default=False, type=eval, help="If True load the m
 parser.add_argument("--batch_size", default=100, type=int, help="Batch size")
 parser.add_argument("--n_epochs", default=1000, type=int, help="Max number of training iterations")
 parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--n_posterior_samples", default=100, type=int, help="Number of samples from posterior distribution")
+parser.add_argument("--n_posterior_samples", default=10, type=int, help="Number of samples from posterior distribution")
 parser.add_argument("--device", default="cpu", type=str, help="Choose 'cpu' or 'cuda'")
 args = parser.parse_args()
 
