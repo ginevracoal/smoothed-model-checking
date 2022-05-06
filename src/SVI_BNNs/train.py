@@ -8,7 +8,7 @@ import numpy as np
 import pickle5 as pickle
 
 sys.path.append(".")
-from paths import *
+from settings import *
 from SVI_BNNs.bnn import BNN_smMC
 from posterior_plot_utils import plot_posterior
 

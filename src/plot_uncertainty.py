@@ -11,7 +11,7 @@ import seaborn as sns
 import pickle5 as pickle
 import matplotlib.pyplot as plt
 
-from paths import *
+from settings import *
 from SVI_BNNs.bnn import BNN_smMC
 from EP_GPs.smMC_GPEP import smMC_GPEP
 from SVI_GPs.variational_GP import GPmodel

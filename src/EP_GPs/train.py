@@ -5,7 +5,7 @@ import numpy as np
 import pickle5 as pickle
 
 sys.path.append(".")
-from paths import *
+from settings import *
 from EP_GPs.smMC_GPEP import *
 from posterior_plot_utils import plot_posterior
 
