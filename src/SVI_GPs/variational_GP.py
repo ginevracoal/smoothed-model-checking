@@ -74,24 +74,26 @@ class GPmodel(ApproximateGP):
         print(f"\nTraining time = {training_time}")
         return training_time
 
-    def save(self, filepath, filename):
+    def save(self, filepath, filename, training_device):
         print(filepath)
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         torch.save(self.state_dict(), os.path.join(filepath, filename+".pth"))
 
         file = open(os.path.join(filepath, f"{filename}_training_time.txt"),"w")
-        file.writelines(self.training_time)
+        file.writelines(f"{self.training_time} {training_device}")
         file.close()
 
         if self.n_epochs >= 50:
 
             fig,ax = plt.subplots()
-            ax.plot(np.arange(0,self.n_epochs,1), np.array(self.loss_history), color="red")
+            x = np.linspace(0,self.n_epochs,len(self.loss_history))
+            ax.plot(x, np.array(self.loss_history), color="red")
             ax.set_ylabel("loss",color="red")
 
             ax2=ax.twinx()
             n_avg_variation_pts = len(self.avg_variation_history)
-            ax2.plot(np.arange(1,self.n_epochs,1), np.array(self.avg_variation_history), color="blue")
+            x = np.linspace(1,self.n_epochs,len(self.avg_variation_history))
+            ax2.plot(x, np.array(self.avg_variation_history), color="blue")
             ax2.set_ylabel("avg variation",color="blue")
 
             plt.xlabel("epochs")
@@ -115,7 +117,6 @@ class GPmodel(ApproximateGP):
         else:
             raise AttributeError
 
-        self.to(device)
 
         self.train()
         likelihood.train()
@@ -124,6 +125,14 @@ class GPmodel(ApproximateGP):
         x_train = normalize_columns(x_train)
         dataset = TensorDataset(x_train, y_train) 
         train_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True)
+
+        trasp_x_train = torch.transpose(x_train, 0, 1)
+        x_val = [torch.linspace(x_train_par.min(), x_train_par.max(), steps=1000) for x_train_par in trasp_x_train]
+        x_val = torch.stack(x_val).to(device)
+        x_val = torch.transpose(x_val, 0, 1)
+
+        self.to(device)
+        x_train = x_train.to(device)
 
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         elbo = gpytorch.mlls.VariationalELBO(likelihood, self, num_data=len(x_train))
@@ -135,17 +144,8 @@ class GPmodel(ApproximateGP):
         start = time.time()
 
         i = 0
-        prev_avg_norm = 1
         avg_variation = torch.tensor(1)
-
-        mean_list = []
-        covar_list = []
-
-        # for i in tqdm(range(n_epochs)):
         while avg_variation>10e-6 and i<n_epochs:
-
-            mean_list_new = []
-            covar_list_new = []
 
             for x_batch, y_batch in train_loader:
                 x_batch = x_batch.to(device)
@@ -156,27 +156,17 @@ class GPmodel(ApproximateGP):
                 loss.backward()
                 optimizer.step()
 
-                mean_list_new.append(output.mean)
-                covar_list_new.append(output.covariance_matrix)
-
-            loss_history.append(loss.detach().cpu().numpy())
-
-            mean_list_new = torch.stack(mean_list_new)
-            covar_list_new = torch.stack(covar_list_new)
+            val_out = self.posterior_predictive(x_train=x_train, x_test=x_val, n_posterior_samples=1)[0]
 
             if i>0:
-                avg_mean_norm = torch.mean(torch.norm(mean_list-mean_list_new, p=float('inf'), dim=1))
-                avg_covariance_norm = torch.mean(torch.norm(covar_list-covar_list_new, p=float('inf'), dim=1))
-                avg_norm = avg_mean_norm+avg_covariance_norm
+                avg_variation = torch.mean(torch.norm(val_out-prev_val_out, p=float('inf')))
 
-                avg_variation = torch.abs(prev_avg_norm-avg_norm)
-                avg_variation_history.append(avg_variation.detach().cpu().numpy())
-                prev_avg_norm = avg_norm
-
-            mean_list = mean_list_new
-            covar_list = covar_list_new
+            prev_val_out = val_out
 
             if i % 10 == 0:
+                avg_variation_history.append(avg_variation.detach().cpu().numpy())
+                loss_history.append(loss.detach().cpu().numpy())
+
                 print(f"Epoch {i}/{n_epochs} - Loss: {loss} - Avg variation: {avg_variation}")
 
             i += 1
