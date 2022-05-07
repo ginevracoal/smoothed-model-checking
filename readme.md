@@ -20,6 +20,7 @@ checking the satisfaction probability of a certain property as a function of the
 ## Setup
 
 Ubuntu version 18.04.06 LTS
+
 Python version 3.7.13
 
 Install virtual environment:
