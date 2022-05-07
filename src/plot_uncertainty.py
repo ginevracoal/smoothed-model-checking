@@ -72,7 +72,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
     df = pd.concat([df, pd.DataFrame({
         "params_idx":list(range(len(val_data["params"]))),
         "uncertainty":2*errors,
-        "model":"Validation"
+        "model":"Test"
         })], ignore_index=True)
 
     ### Eval models on validation set
