@@ -4,7 +4,6 @@
 # settings #
 ############
 
-DEVICE="cuda" # choose "cpu" or "cuda"
 N_POSTERIOR_SAMPLES=1000
 
 SVI_GP_VARIATIONAL_DISTRIBUTION="cholesky"
@@ -31,26 +30,24 @@ LOGS="out/logs/"
 mkdir -p $LOGS
 OUT="${LOGS}${DATE}_${TIME}_out.txt"
 
-# python EP_GPs/train.py >> $OUT 2>&1
+python EP_GPs/train.py >> $OUT 2>&1
 
-# python SVI_BNNs/train.py --architecture=$SVI_BNN_ARCHITECTURE --batch_size=$SVI_BNN_BATCH_SIZE \
-# 	--n_epochs=$SVI_BNN_N_EPOCHS --lr=$SVI_BNN_LR --n_hidden=$SVI_BNN_N_HIDDEN \
-# 	--device=$DEVICE >> $OUT 2>&1
+python SVI_BNNs/train.py --architecture=$SVI_BNN_ARCHITECTURE --batch_size=$SVI_BNN_BATCH_SIZE \
+	--n_epochs=$SVI_BNN_N_EPOCHS --lr=$SVI_BNN_LR --n_hidden=$SVI_BNN_N_HIDDEN \
+	--device="cpu">> $OUT 2>&1
 
-python SVI_GPs/train.py --variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION --device=$DEVICE \
+python SVI_GPs/train.py --variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
 	--variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --batch_size=$SVI_GP_BATCH_SIZE \
-	--n_epochs=$SVI_GP_N_EPOCHS --lr=$SVI_GP_LR >> $OUT 2>&1
+	--n_epochs=$SVI_GP_N_EPOCHS --lr=$SVI_GP_LR --device="cuda" >> $OUT 2>&1
 
-# python plot_satisfaction.py --ep_gp_n_epochs=$EP_GP_N_EPOCHS \
-# 	--svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
-# 	--svi_gp_variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --svi_gp_batch_size=$SVI_GP_BATCH_SIZE \
-# 	--svi_gp_n_epochs=$SVI_GP_N_EPOCHS --svi_gp_lr=$SVI_GP_LR --svi_bnn_architecture=$SVI_BNN_ARCHITECTURE \
-# 	--svi_bnn_batch_size=$SVI_BNN_BATCH_SIZE --svi_bnn_n_epochs=$SVI_BNN_N_EPOCHS --svi_bnn_lr=$SVI_BNN_LR \
-# 	--svi_bnn_n_hidden=$SVI_BNN_N_HIDDEN --n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
+python plot_satisfaction.py --svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
+	--svi_gp_variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --svi_gp_batch_size=$SVI_GP_BATCH_SIZE \
+	--svi_gp_n_epochs=$SVI_GP_N_EPOCHS --svi_gp_lr=$SVI_GP_LR --svi_bnn_architecture=$SVI_BNN_ARCHITECTURE \
+	--svi_bnn_batch_size=$SVI_BNN_BATCH_SIZE --svi_bnn_n_epochs=$SVI_BNN_N_EPOCHS --svi_bnn_lr=$SVI_BNN_LR \
+	--svi_bnn_n_hidden=$SVI_BNN_N_HIDDEN --n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
 
-# python plot_uncertainty.py --ep_gp_n_epochs=$EP_GP_N_EPOCHS \
-# 	--svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
-# 	--svi_gp_variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --svi_gp_batch_size=$SVI_GP_BATCH_SIZE \
-# 	--svi_gp_n_epochs=$SVI_GP_N_EPOCHS --svi_gp_lr=$SVI_GP_LR --svi_bnn_architecture=$SVI_BNN_ARCHITECTURE \
-# 	--svi_bnn_batch_size=$SVI_BNN_BATCH_SIZE --svi_bnn_n_epochs=$SVI_BNN_N_EPOCHS --svi_bnn_lr=$SVI_BNN_LR \
-# 	--svi_bnn_n_hidden=$SVI_BNN_N_HIDDEN --n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1
+python plot_uncertainty.py --svi_gp_variational_distribution=$SVI_GP_VARIATIONAL_DISTRIBUTION \
+	--svi_gp_variational_strategy=$SVI_GP_VARIATIONAL_STRATEGY --svi_gp_batch_size=$SVI_GP_BATCH_SIZE \
+	--svi_gp_n_epochs=$SVI_GP_N_EPOCHS --svi_gp_lr=$SVI_GP_LR --svi_bnn_architecture=$SVI_BNN_ARCHITECTURE \
+	--svi_bnn_batch_size=$SVI_BNN_BATCH_SIZE --svi_bnn_n_epochs=$SVI_BNN_N_EPOCHS --svi_bnn_lr=$SVI_BNN_LR \
+	--svi_bnn_n_hidden=$SVI_BNN_N_HIDDEN --n_posterior_samples=$N_POSTERIOR_SAMPLES >> $OUT 2>&1

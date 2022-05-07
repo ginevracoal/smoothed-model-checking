@@ -109,8 +109,8 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
             n_samples=n_samples_val, n_trials=n_trials_val)
 
         with open(out_txt, "a") as file:
-            file.write(f"\nEP GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
-    
+            file.write(f"\nEP GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']}\tavg_unc={evaluation_dict['avg_uncertainty_area']}\teval_time={evaluation_dict['evaluation_time']}")
+
     if n_params<=2:
 
         ax = plot_posterior_ax(ax=ax, ax_idxs=[0,1], params_list=params_list, math_params_list=math_params_list,  
@@ -137,7 +137,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         n_posterior_samples=args.n_posterior_samples, device=args.device)
 
     with open(out_txt, "a") as file:
-        file.write(f"\nSVI GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
+        file.write(f"\nSVI GP\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']}\tavg_unc={evaluation_dict['avg_uncertainty_area']}\teval_time={evaluation_dict['evaluation_time']}")
 
     if n_params<=2:
 
@@ -166,7 +166,7 @@ for filepath, train_filename, val_filename, params_list, math_params_list in cas
         n_posterior_samples=args.n_posterior_samples, device=args.device)
 
     with open(out_txt, "a") as file:
-        file.write(f"\nSVI BNN\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']} avg_unc={evaluation_dict['avg_uncertainty_area']}")
+        file.write(f"\nSVI BNN\ttraining_time={training_time}\tmse={evaluation_dict['mse']}\tval_acc={evaluation_dict['val_accuracy']}\tavg_unc={evaluation_dict['avg_uncertainty_area']}\teval_time={evaluation_dict['evaluation_time']}")
 
     if n_params<=2:
 

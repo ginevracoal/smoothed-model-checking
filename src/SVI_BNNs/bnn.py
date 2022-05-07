@@ -20,7 +20,6 @@ from sklearn import preprocessing
 import torch.nn.functional as nnf
 from itertools import combinations
 from torch.autograd import Variable
-from paths import models_path, plots_path
 from torch.utils.data import TensorDataset, DataLoader
 from pyro.distributions import Normal, Binomial, Bernoulli
 from pyro.infer import SVI, Trace_ELBO, TraceMeanField_ELBO
