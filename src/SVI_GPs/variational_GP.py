@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
+from scipy.stats import norm
 from itertools import product
 import matplotlib.pyplot as plt
 from gpytorch.models import ApproximateGP
@@ -20,7 +21,7 @@ from gpytorch.variational import MeanFieldVariationalDistribution, CholeskyVaria
 sys.path.append(".")
 from SVI_GPs.binomial_likelihood import BinomialLikelihood
 from SVI_GPs.bernoulli_likelihood import BernoulliLikelihood
-from evaluation_metrics import execution_time, evaluate_posterior_samples
+from evaluation_metrics import execution_time, intervals_intersection, evaluate_posterior_samples
 from data_utils import normalize_columns, Poisson_observations, get_tensor_data, get_bernoulli_data, get_binomial_data
 
 
@@ -195,41 +196,93 @@ class GPmodel(ApproximateGP):
         post_samples = torch.tensor(post_samples)
         return post_samples
 
+    def evaluate_analytic_posterior(self, x_train, x_val, y_val, n_samples, n_trials, z=1.96):
+
+        if y_val.shape != (n_samples, n_trials):
+            raise ValueError("y_val should be bernoulli trials")
+
+        if type(y_val)==torch.Tensor:
+            y_val = y_val.cpu().detach().numpy()
+
+        satisfaction_prob = y_val.mean(1).flatten()
+        assert satisfaction_prob.min()>=0
+        assert satisfaction_prob.max()<=1
+
+        min_x, max_x, _ = normalize_columns(x_train, return_minmax=True)
+        normalized_x = normalize_columns(x_val, min_x=min_x, max_x=max_x)
+        posterior = self(normalized_x)
+
+        mean = posterior.mean.cpu().detach().numpy()
+        variance = posterior.variance.cpu().detach().numpy()
+
+        # post_mean = norm.cdf(mean)
+        post_mean = norm.cdf(mean / np.sqrt(1 + variance))
+        quantiles_interval = [mean - z * np.sqrt(variance), mean + z * np.sqrt(variance)]
+        bounds = norm.cdf(np.tile(1 / np.sqrt(1 + variance), (2, 1)) * quantiles_interval)
+        q1, q2 = bounds[0, :], bounds[1, :]
+
+        assert satisfaction_prob.shape == post_mean.shape
+        assert satisfaction_prob.shape == q1.shape
+
+        sample_variance = [((param_y-param_y.mean())**2).mean() for param_y in y_val]
+        val_std = np.sqrt(sample_variance).flatten()
+        validation_ci = (satisfaction_prob-(z*val_std)/np.sqrt(n_trials),satisfaction_prob+(z*val_std)/np.sqrt(n_trials))
+        
+        q1[q1<10e-6] = 0
+        estimated_ci = (q1, q2)
+
+        non_empty_intersections = np.sum(intervals_intersection(validation_ci,estimated_ci))
+        val_accuracy = 100*non_empty_intersections/n_samples
+        assert val_accuracy <= 100
+
+        val_dist = np.abs(satisfaction_prob-post_mean)
+        mse = np.mean(val_dist**2)
+        # mre = np.mean(val_dist/satisfaction_prob+0.000001)
+
+        ci_uncertainty_area = q2-q1
+        avg_uncertainty_area = np.mean(ci_uncertainty_area)
+
+        print(f"Mean squared error: {mse}")
+        # print(f"Mean relative error: {mre}")
+        print(f"Validation accuracy: {val_accuracy} %")
+        print(f"Average uncertainty area:  {avg_uncertainty_area}\n")
+
+        evaluation_dict = {"val_accuracy":val_accuracy, "mse":mse, 
+            "uncertainty_area":ci_uncertainty_area, "avg_uncertainty_area":avg_uncertainty_area}
+        return post_mean, q1, q2, evaluation_dict
+
     def evaluate(self, train_data, n_posterior_samples, val_data=None, device="cpu"):
 
         random.seed(0)
         np.random.seed(0)
         torch.manual_seed(0)
 
+        x_train = get_binomial_data(train_data)[0]
+        x_val, y_val, n_samples, n_trials = get_tensor_data(val_data)
+
         self.eval()    
-
-        if val_data is None: # Poisson case-study
-
-            raise NotImplementedError
-
-            # n_val_points = 100
-            # x_val, y_val = Poisson_observations(n_val_points)
-            # n_trials_val=1 
-
-        else:
-            x_train = get_binomial_data(train_data)[0]
-            x_val, y_val, n_samples, n_trials = get_tensor_data(val_data)
-
         self.to(device)
         x_train = x_train.to(device)
         x_val = x_val.to(device)
         y_val = y_val.to(device)
 
+        start = time.time()
         with torch.no_grad():
 
-            start = time.time()
-            post_samples = self.posterior_predictive(x_train=x_train, x_test=x_val, 
-                n_posterior_samples=n_posterior_samples)
-            evaluation_time = execution_time(start=start, end=time.time())
-            print(f"Evaluation time = {evaluation_time}")
+            ### posterior samples
 
-        post_mean, q1, q2, evaluation_dict = evaluate_posterior_samples(y_val=y_val, post_samples=post_samples, 
-            n_samples=n_samples, n_trials=n_trials)
+            # post_samples = self.posterior_predictive(x_train=x_train, x_test=x_val, 
+            #     n_posterior_samples=n_posterior_samples)
+            # post_mean, q1, q2, evaluation_dict = evaluate_posterior_samples(y_val=y_val, post_samples=post_samples, 
+            #     n_samples=n_samples, n_trials=n_trials)
+
+            ### analytic posterior
+
+            post_mean, q1, q2, evaluation_dict = self.evaluate_analytic_posterior(x_train=x_train, x_val=x_val, 
+                y_val=y_val, n_samples=n_samples, n_trials=n_trials)
         
+        evaluation_time = execution_time(start=start, end=time.time())
+        print(f"Evaluation time = {evaluation_time}")
+
         evaluation_dict.update({"evaluation_time":evaluation_time})
         return post_mean, q1, q2, evaluation_dict

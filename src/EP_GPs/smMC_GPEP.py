@@ -8,8 +8,8 @@ from math import erf
 import pickle5 as pickle
 from scipy.stats import norm
 from scipy.optimize import minimize
-from evaluation_metrics import execution_time, intervals_intersection
 from sklearn.gaussian_process.kernels import RBF
+from evaluation_metrics import execution_time, intervals_intersection
 
 
 class EPupdate():

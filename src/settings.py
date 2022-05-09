@@ -15,5 +15,4 @@ case_studies = [
 ]
 
 data_path = 'data/'
-plots_path='out/plots/'
 models_path = 'out/models/'
